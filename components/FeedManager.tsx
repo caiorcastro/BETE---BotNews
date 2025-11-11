@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Feed } from '../types';
 
@@ -35,7 +34,7 @@ const FeedManager: React.FC<FeedManagerProps> = ({ feeds, selectedFeed, setSelec
       <div className="flex justify-between items-center">
         <span className="truncate pr-2">{name}</span>
         {typeof count !== 'undefined' && (
-          <span className="flex-shrink-0 text-xs bg-gray-600 text-gray-200 font-medium rounded-full px-2 py-0.5">{count}</span>
+          <span className="flex-shrink-0 text-xs text-gray-400 font-medium">{count}</span>
         )}
       </div>
     </button>

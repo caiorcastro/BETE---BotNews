@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Article } from '../types';
 
@@ -72,19 +71,20 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
     };
 
     const setDateRange = (days: number) => {
+        const toYYYYMMDD = (date: Date) => {
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+            const dd = String(date.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        };
+
         const end = new Date();
         const start = new Date();
         start.setDate(end.getDate() - days);
-        setEndDate(end.toISOString().split('T')[0]);
-        setStartDate(start.toISOString().split('T')[0]);
+        
+        setEndDate(toYYYYMMDD(end));
+        setStartDate(toYYYYMMDD(start));
     };
-
-    const ControlInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => (
-        <input 
-            {...props}
-            className="bg-card-dark text-gray-300 placeholder-gray-500 border border-gray-700 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none" 
-        />
-    );
 
     const ActionButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & {icon: string}> = ({children, icon, ...props}) => (
          <button
@@ -130,14 +130,6 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
                     />
                     <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <label htmlFor="start-date" className="text-sm text-gray-400">De:</label>
-                    <ControlInput id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-                </div>
-                <div className="flex items-center gap-2">
-                    <label htmlFor="end-date" className="text-sm text-gray-400">Até:</label>
-                    <ControlInput id="end-date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-                </div>
                 <div className="flex items-center gap-2 ml-auto">
                     <ActionButton onClick={onRefresh} icon="refresh">Atualizar Fontes</ActionButton>
                     <ActionButton onClick={handleExport} icon="download">Exportar CSV</ActionButton>
@@ -154,7 +146,8 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-gray-400">Período:</span>
-                    <DatePresetButton days={1} label="24h" onClick={setDateRange} />
+                    <DatePresetButton days={0} label="Hoje" onClick={setDateRange} />
+                    <DatePresetButton days={1} label="D-1" onClick={setDateRange} />
                     <DatePresetButton days={7} label="7d" onClick={setDateRange} />
                     <DatePresetButton days={15} label="15d" onClick={setDateRange} />
                     <DatePresetButton days={30} label="30d" onClick={setDateRange} />

@@ -79,13 +79,15 @@ export default function App() {
 
     // 3. Filter by date range
     if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
+        // Create date in local timezone to avoid UTC interpretation issues
+        const [year, month, day] = startDate.split('-').map(Number);
+        const start = new Date(year, month - 1, day, 0, 0, 0, 0);
         currentArticles = currentArticles.filter(article => new Date(article.date) >= start);
     }
     if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999); // Include the entire end day
+        // Create date in local timezone to avoid UTC interpretation issues
+        const [year, month, day] = endDate.split('-').map(Number);
+        const end = new Date(year, month - 1, day, 23, 59, 59, 999);
         currentArticles = currentArticles.filter(article => new Date(article.date) <= end);
     }
     
