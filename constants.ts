@@ -39,3 +39,7 @@ export const INITIAL_FEEDS: Feed[] = [
   { id: '29', name: 'Câmara dos Deputados', url: 'https://www.camara.leg.br/noticias/rss' }, // Corrected URL
   { id: '30', name: 'JOTA', url: 'https://www.jota.info/feed' },
 ];
+
+export const COMPETITOR_LIST = [
+    'SuperBet','Betano','Bet365','7kbet','Novibet','EstrelaBet','Sportingbet','H2Bet','Stake','Betfair','Betsson','F12.Bet','Parimatch','VBET','Multibet','Esportivabet','BetBoom','Brazino777'
+];

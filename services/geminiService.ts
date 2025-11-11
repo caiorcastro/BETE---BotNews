@@ -3,12 +3,16 @@ import { GoogleGenAI, Chat, Type } from "@google/genai";
 import { ChatMessage, ChatMessageAuthor, ChatMode, GroundingSource, Article } from "../types";
 
 let ai: GoogleGenAI | null = null;
-try {
-  if (process.env.API_KEY) {
-    ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = import.meta.env.VITE_API_KEY;
+
+if (apiKey) {
+  try {
+    ai = new GoogleGenAI({ apiKey });
+  } catch (error) {
+    console.error("Failed to initialize GoogleGenAI:", error);
   }
-} catch (error) {
-  console.error("Failed to initialize GoogleGenAI:", error);
+} else {
+  console.warn("VITE_API_KEY not found in .env file. Please add it to use Gemini features.");
 }
 
 // --- CORE AI CLASSIFICATION ENGINE ---
@@ -112,6 +116,74 @@ export const classifyAndFilterArticles = async (
   }
 };
 
+// --- REPORT GENERATION ENGINE ---
+
+const reportSystemPrompt = `
+You are a top-tier market intelligence analyst for BETMGM, preparing a high-level executive summary for leadership.
+Your task is to synthesize a list of classified news articles into a concise, insightful, and well-structured Markdown report.
+
+**Report Structure and Formatting Rules:**
+
+1.  **Main Title:** Start with a main title, e.g., "# Relatório de Inteligência de Mercado".
+2.  **Subtitle:** Add a subtitle indicating the time period covered, e.g., "## Período: Últimos 7 dias".
+3.  **Executive Summary (TL;DR):**
+    *   Begin with a section "### 🚀 Resumo Executivo (TL;DR)".
+    *   Write 3-5 bullet points summarizing the most critical information and key trends from the provided articles. Focus on what a C-level executive needs to know immediately.
+4.  **Key Insights by Relevance:**
+    *   Structure the main body with sections for each relevance level found in the articles.
+    *   Use the following headers: "### 🔴 Alta Relevância", "### 🟡 Média Relevância", "### 🔵 Baixa Relevância".
+    *   Only include a relevance section if there are articles for it.
+5.  **Article Summaries:**
+    *   Under each relevance heading, list the articles.
+    *   For each article, create a single, concise paragraph that:
+        *   Starts with the article title in bold: **[Article Title]**.
+        *   Briefly summarizes the key information.
+        *   Mentions any competitors involved.
+        *   Ends with the source and date in italics: *([Source] - [Date])*.
+    *   Example: "**Novo Patrocínio da Betano no Brasileirão.** A Betano fechou um acordo de patrocínio master com a Série A do Campeonato Brasileiro, aumentando significativamente sua visibilidade. A ação pressiona a BetMGM a reavaliar sua estratégia de marketing esportivo. * (SBC Notícias - 2024-10-28)*"
+6.  **Tone and Style:**
+    *   Be objective, analytical, and concise.
+    *   Use professional language suitable for executives.
+    *   The entire output MUST be in Brazilian Portuguese.
+    *   The output MUST be a single string of valid Markdown.
+`;
+
+export const generateMarkdownReport = async (articles: Article[], period: string): Promise<string> => {
+    if (!ai) {
+        throw new Error("Gemini AI not initialized.");
+    }
+    if (articles.length === 0) {
+        return "# Relatório de Inteligência de Mercado\n\nNenhum artigo relevante encontrado para o período selecionado.";
+    }
+
+    // Sort articles by relevance: High > Medium > Low
+    const sortedArticles = [...articles].sort((a, b) => {
+        const relevanceOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
+        return relevanceOrder[a.relevance] - relevanceOrder[b.relevance];
+    });
+
+    const prompt = `
+Here is the list of articles to be summarized in the report for the period "${period}":
+
+${JSON.stringify(sortedArticles, null, 2)}
+`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro', // Using Pro for higher quality summary
+            contents: prompt,
+            config: {
+                systemInstruction: reportSystemPrompt,
+                responseMimeType: 'text/plain',
+            },
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error in Gemini report generation:", error);
+        throw new Error("Failed to generate report using Gemini AI.");
+    }
+};
+
 
 // --- CHATBOT FUNCTIONALITY ---
 
@@ -136,7 +208,7 @@ export const getGeminiResponse = async (
     history: ChatMessage[]
 ): Promise<{ text: string, sources?: GroundingSource[] }> => {
 
-    if (!process.env.API_KEY || !ai) {
+    if (!apiKey || !ai) {
         console.warn("API_KEY not found. Using mock response.");
         await new Promise(res => setTimeout(res, 1500));
         
