@@ -1,0 +1,5 @@
+{
+  "name": "BETMGM Feed Intelligence",
+  "description": "An intelligent RSS feed aggregator for BETMGM, leveraging the Gemini API to provide news analysis, content summarization, and a powerful chatbot for up-to-date industry insights.",
+  "requestFramePermissions": []
+}
