@@ -34,7 +34,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, setIsOpen, initialPrompt, set
   useEffect(() => {
     if (initialPrompt && isOpen) {
         setMessages([
-            { author: ChatMessageAuthor.SYSTEM, content: `Analyzing article...` },
+            { author: ChatMessageAuthor.SYSTEM, content: `Analisando artigo...` },
         ]);
         handleSendMessage(initialPrompt, ChatMode.FLASH); // Default to Flash for analysis
         setInitialPrompt(''); // Clear after use
@@ -52,13 +52,13 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, setIsOpen, initialPrompt, set
 
     try {
         const { text, sources } = await getGeminiResponse(prompt, chatMode, messages);
-        const geminiMessage: ChatMessage = { author: ChatMessageAuthor.GEMINI, content: text || "I couldn't find a response for that.", sources };
+        const geminiMessage: ChatMessage = { author: ChatMessageAuthor.GEMINI, content: text || "Não consegui encontrar uma resposta para isso.", sources };
         setMessages(prev => [...prev, geminiMessage]);
     } catch (error) {
         console.error("Failed to get response from Gemini:", error);
         const errorMessage: ChatMessage = { 
             author: ChatMessageAuthor.SYSTEM, 
-            content: 'Sorry, I encountered an error. Please check the console for details and try again.' 
+            content: 'Desculpe, encontrei um erro. Por favor, verifique o console para detalhes e tente novamente.' 
         };
         setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -91,8 +91,8 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, setIsOpen, initialPrompt, set
     <div role="dialog" aria-modal="true" aria-labelledby="chatbot-title" className="fixed inset-0 bg-black/80 z-40 flex justify-center items-center backdrop-blur-sm" onClick={() => setIsOpen(false)}>
       <div className="bg-background-dark border border-gray-800 rounded-lg shadow-2xl w-full max-w-2xl h-[80vh] flex flex-col relative" onClick={e => e.stopPropagation()}>
         <header className="flex justify-between items-center p-4 border-b border-gray-800">
-            <h2 id="chatbot-title" className="text-lg font-bold font-display text-white">Gemini Chat</h2>
-            <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-white" aria-label="Close Chat">
+            <h2 id="chatbot-title" className="text-lg font-bold font-display text-white">Chat com Gemini</h2>
+            <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-white" aria-label="Fechar Chat">
                 <span className="material-icons">close</span>
             </button>
         </header>
@@ -111,7 +111,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, setIsOpen, initialPrompt, set
                             </div>
                             {msg.sources && msg.sources.length > 0 && (
                                 <div className="mt-2 pt-2 border-t border-gray-700">
-                                    <h4 className="text-xs font-bold mb-1">Sources:</h4>
+                                    <h4 className="text-xs font-bold mb-1">Fontes:</h4>
                                     <ul className="list-disc list-inside space-y-1">
                                         {msg.sources.map((source, i) => (
                                             <li key={i} className="text-xs">
@@ -143,10 +143,10 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, setIsOpen, initialPrompt, set
         
         <div className="p-4 border-t border-gray-800">
             <div className="flex items-center gap-3 mb-2" role="radiogroup" aria-label="Chat Mode">
-                <span className="text-xs font-medium text-gray-400">Mode:</span>
-                <ModeButton current={mode} target={ChatMode.FLASH} label="Flash" description="Fast responses for general tasks and summarization. (gemini-2.5-flash)" />
-                <ModeButton current={mode} target={ChatMode.GROUNDED} label="Grounded" description="Get up-to-date, factual answers grounded in Google Search. (gemini-2.5-flash)" />
-                <ModeButton current={mode} target={ChatMode.THINKING} label="Thinking" description="Handles complex queries needing advanced reasoning. (gemini-2.5-pro)" />
+                <span className="text-xs font-medium text-gray-400">Modo:</span>
+                <ModeButton current={mode} target={ChatMode.FLASH} label="Flash" description="Respostas rápidas para tarefas gerais e sumarização. (gemini-2.5-flash)" />
+                <ModeButton current={mode} target={ChatMode.GROUNDED} label="Grounded" description="Respostas atualizadas e factuais baseadas na Busca Google. (gemini-2.5-flash)" />
+                <ModeButton current={mode} target={ChatMode.THINKING} label="Thinking" description="Lida com consultas complexas que exigem raciocínio avançado. (gemini-2.5-pro)" />
             </div>
             <form onSubmit={handleSubmit} className="flex items-center gap-2">
                 <input
@@ -154,7 +154,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, setIsOpen, initialPrompt, set
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ask anything..."
+                    placeholder="Pergunte qualquer coisa..."
                     className="flex-grow bg-card-dark text-gray-200 placeholder-gray-500 border border-gray-700 rounded-md px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition"
                     disabled={isLoading}
                     aria-label="Chat input"
@@ -163,7 +163,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, setIsOpen, initialPrompt, set
                     type="submit"
                     className="bg-primary hover:opacity-90 disabled:bg-gray-600 disabled:cursor-not-allowed text-black font-semibold rounded-md p-2 transition-colors"
                     disabled={isLoading || !input.trim()}
-                    aria-label="Send Message"
+                    aria-label="Enviar Mensagem"
                 >
                     <span className="material-icons text-lg">send</span>
                 </button>

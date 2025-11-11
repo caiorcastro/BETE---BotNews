@@ -46,9 +46,12 @@ const ArticleItem: React.FC<{ article: Article; onAnalyze: () => void }> = ({ ar
   return (
     <div className="bg-card-dark rounded-lg shadow-md overflow-hidden flex flex-col hover:-translate-y-1 transition-transform duration-300">
       <div className="p-5 flex-grow flex flex-col">
-        <div className="flex items-start justify-between mb-2">
-          <span className="text-xs font-bold uppercase text-primary tracking-wider flex-shrink-0 pr-2">{article.source}</span>
-          <RelevanceBadge relevance={article.relevance} reason={article.reason} />
+        <div className="flex items-center justify-between text-xs mb-2">
+          <span className="font-bold uppercase text-primary tracking-wider truncate pr-2">{article.source}</span>
+          <span className="text-gray-400 flex-shrink-0">{formatDate(article.date)}</span>
+        </div>
+        <div className="mb-2">
+           <RelevanceBadge relevance={article.relevance} reason={article.reason} />
         </div>
         <h3 className="text-lg font-bold font-display text-white mb-2 leading-tight">
            <a href={article.link} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
@@ -62,7 +65,7 @@ const ArticleItem: React.FC<{ article: Article; onAnalyze: () => void }> = ({ ar
         {article.competitors && article.competitors.length > 0 && (
           <div className="mt-3 pt-3 border-t border-gray-700/50">
             <div className="flex flex-wrap gap-2 items-center">
-                <span className="text-xs font-semibold text-gray-500">Competitors:</span>
+                <span className="text-xs font-semibold text-gray-500">Concorrentes:</span>
                 {article.competitors.map(c => <CompetitorTag key={c} name={c} />)}
             </div>
           </div>
@@ -70,7 +73,7 @@ const ArticleItem: React.FC<{ article: Article; onAnalyze: () => void }> = ({ ar
       </div>
       <div className="bg-card-footer-dark px-5 py-3 text-right mt-auto">
         <button onClick={onAnalyze} className="text-sm font-bold text-primary hover:underline">
-          Analyze →
+          Analisar →
         </button>
       </div>
     </div>
@@ -104,8 +107,8 @@ const ArticleList: React.FC<ArticleListProps> = ({ articles, isLoading, onAnalyz
                 <div className="w-4 h-4 bg-primary rounded-full animate-pulse [animation-delay:-0.15s]"></div>
                 <div className="w-4 h-4 bg-primary rounded-full animate-pulse"></div>
             </div>
-            <h3 className="text-xl font-semibold text-gray-300">BETE is Hunting for News...</h3>
-            <p className="text-gray-400 mt-2">Analyzing and classifying articles with Gemini AI.</p>
+            <h3 className="text-xl font-semibold text-gray-300">BETE está caçando notícias...</h3>
+            <p className="text-gray-400 mt-2">Analisando e classificando artigos com a IA Gemini.</p>
         </div>
       );
     }
@@ -114,7 +117,7 @@ const ArticleList: React.FC<ArticleListProps> = ({ articles, isLoading, onAnalyz
          return (
             <div className="text-center py-20 bg-card-dark rounded-lg">
                 <span className="material-icons text-5xl text-red-500">error_outline</span>
-                <h3 className="mt-4 text-xl font-semibold text-gray-300">Failed to Load Feeds</h3>
+                <h3 className="mt-4 text-xl font-semibold text-gray-300">Falha ao Carregar as Fontes</h3>
                 <p className="text-gray-400 mt-2">{error}</p>
             </div>
         );
@@ -124,8 +127,8 @@ const ArticleList: React.FC<ArticleListProps> = ({ articles, isLoading, onAnalyz
       return (
         <div className="text-center py-20 bg-card-dark rounded-lg">
           <span className="material-icons text-5xl text-gray-600">inbox</span>
-          <h3 className="mt-4 text-xl font-semibold text-gray-300">No Relevant Articles Found</h3>
-          <p className="text-gray-400 mt-2">BETE has filtered the news, and no articles matched the high-priority criteria for today.</p>
+          <h3 className="mt-4 text-xl font-semibold text-gray-300">Nenhum Artigo Relevante Encontrado</h3>
+          <p className="text-gray-400 mt-2">Ajuste os filtros ou aguarde novas notícias. BETE não encontrou nada com os critérios atuais.</p>
         </div>
       );
     }

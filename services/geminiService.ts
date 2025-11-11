@@ -19,7 +19,9 @@ Your sole task is to analyze a JSON list of news articles and return a new JSON 
 
 **Your analysis must follow these strict rules:**
 
-1.  **FILTERING:** You MUST discard any article that is NOT DIRECTLY related to the following topics:
+0.  **LANGUAGE:** You MUST discard any article that is not written in Brazilian Portuguese (pt-BR). This is your most important filtering rule. Do not include articles in English, Spanish, or any other language.
+
+1.  **FILTERING:** After filtering by language, you MUST discard any article that is NOT DIRECTLY related to the following topics:
     *   **Industry & Regulation:** Betting/iGaming regulation in Brazil, licensing, compliance, taxes (SIGAP, etc.), government decrees (Ministério da Fazenda).
     *   **Competitors:** Any news about our main competitors.
     *   **Marketing & Sponsorship:** Competitor marketing campaigns, new sponsorships (especially football clubs), brand ambassadors, advertising news.
@@ -45,7 +47,7 @@ Your sole task is to analyze a JSON list of news articles and return a new JSON 
     *   **Mid Tier:** Novibet, Betsson, F12.Bet, Parimatch, VBET
     *   **Emergentes:** Superbet, Multibet, Esportivabet, BetBoom, Brazino777
 
-4.  **REASON:** Provide a very brief, concise reason (max 10 words) for your classification decision. Example: "Major regulation change impacting licensing." or "New sponsorship by Top-Tier competitor."
+4.  **REASON (in Portuguese):** Provide a very brief, concise reason (max 15 words) **in Brazilian Portuguese** for your classification decision. Example: "Grande mudança na regulamentação de licenças." or "Novo patrocínio de concorrente Top-Tier."
 
 5.  **OUTPUT:** You MUST return a single JSON object with one key: "articles". The value must be an array of article objects conforming to the provided JSON schema. If no articles are relevant, return an empty array.
 `;
@@ -92,7 +94,7 @@ export const classifyAndFilterArticles = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-pro',
+      model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
         systemInstruction: classificationSystemPrompt,
@@ -138,13 +140,13 @@ export const getGeminiResponse = async (
         console.warn("API_KEY not found. Using mock response.");
         await new Promise(res => setTimeout(res, 1500));
         
-        let mockText = `This is a mock response for your prompt: "${prompt}" in ${mode} mode. `;
+        let mockText = `Esta é uma resposta simulada para o seu prompt: "${prompt}" no modo ${mode}. `;
         if(mode === ChatMode.GROUNDED) {
             return {
-                text: mockText + "I have found some sources for you from the web.",
+                text: mockText + "Encontrei algumas fontes para você na web.",
                 sources: [
-                    { title: "Mock Source 1: Industry News", uri: "#"},
-                    { title: "Mock Source 2: Market Analysis", uri: "#"}
+                    { title: "Fonte Simulada 1: Notícias da Indústria", uri: "#"},
+                    { title: "Fonte Simulada 2: Análise de Mercado", uri: "#"}
                 ]
             }
         }
@@ -192,6 +194,6 @@ export const getGeminiResponse = async (
         }
     } catch (error) {
         console.error(`Error fetching Gemini response in ${mode} mode:`, error);
-        return { text: `An error occurred while trying to get a response. Please check the console for details.` };
+        return { text: `Ocorreu um erro ao tentar obter uma resposta. Por favor, verifique o console para detalhes.` };
     }
 };

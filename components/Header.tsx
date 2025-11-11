@@ -18,10 +18,10 @@ const Header: React.FC = () => {
                 Artplan
              </div>
             <button className="bg-primary text-black font-bold py-2 px-4 rounded-full text-sm hover:opacity-90 transition-opacity">
-              LOGIN
+              ENTRAR
             </button>
             <button className="bg-[#333] border border-primary text-primary font-bold py-2 px-4 rounded-full text-sm hover:bg-primary hover:text-black transition-colors">
-              REGISTER
+              REGISTRAR
             </button>
           </div>
         </div>

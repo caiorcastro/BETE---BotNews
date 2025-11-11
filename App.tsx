@@ -19,10 +19,13 @@ export default function App() {
   const [initialChatPrompt, setInitialChatPrompt] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
-  // State for new controls
+  // State for controls
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [selectedRelevance, setSelectedRelevance] = useState<string[]>([]);
+  const [filterByCompetitors, setFilterByCompetitors] = useState<boolean>(false);
+  const [feedCounts, setFeedCounts] = useState<Record<string, number>>({});
 
 
   const fetchArticles = useCallback(async () => {
@@ -33,9 +36,22 @@ export default function App() {
         // Sort by date descending
         fetchedArticles.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setArticles(fetchedArticles);
+
+        // Calculate counts for each feed
+        const counts: Record<string, number> = {};
+        feeds.forEach(feed => {
+            counts[feed.name] = 0;
+        });
+        fetchedArticles.forEach(article => {
+            if (counts[article.source] !== undefined) {
+                counts[article.source]++;
+            }
+        });
+        setFeedCounts(counts);
+
     } catch (err) {
         console.error("Error fetching articles:", err);
-        setError("Failed to fetch articles from one or more feeds. Please check the console for details.");
+        setError("Falha ao buscar artigos de uma ou mais fontes. Por favor, verifique o console para detalhes.");
     } finally {
         setIsLoading(false);
     }
@@ -73,8 +89,18 @@ export default function App() {
         currentArticles = currentArticles.filter(article => new Date(article.date) <= end);
     }
     
+    // 4. Filter by relevance
+    if (selectedRelevance.length > 0) {
+        currentArticles = currentArticles.filter(article => selectedRelevance.includes(article.relevance));
+    }
+
+    // 5. Filter by competitors
+    if (filterByCompetitors) {
+        currentArticles = currentArticles.filter(article => article.competitors && article.competitors.length > 0);
+    }
+
     setFilteredArticles(currentArticles);
-  }, [selectedFeed, articles, searchTerm, startDate, endDate]);
+  }, [selectedFeed, articles, searchTerm, startDate, endDate, selectedRelevance, filterByCompetitors]);
 
   const addFeed = (name: string, url: string) => {
     if (name && url && !feeds.some(feed => feed.url === url)) {
@@ -84,7 +110,7 @@ export default function App() {
   };
 
   const handleAnalyzeArticle = (article: Article) => {
-    setInitialChatPrompt(`Please provide a concise summary and analysis of the following article for an executive:\n\nTitle: "${article.title}"\nDescription: "${article.description}"`);
+    setInitialChatPrompt(`Por favor, forneça um resumo conciso e uma análise do seguinte artigo para um executivo:\n\nTítulo: "${article.title}"\nDescrição: "${article.description}"`);
     setIsChatBotOpen(true);
   };
 
@@ -99,6 +125,7 @@ export default function App() {
               selectedFeed={selectedFeed}
               setSelectedFeed={setSelectedFeed}
               addFeed={addFeed}
+              feedCounts={feedCounts}
             />
           </aside>
           <section className="flex-1">
@@ -111,6 +138,10 @@ export default function App() {
                 setEndDate={setEndDate}
                 onRefresh={fetchArticles}
                 filteredArticles={filteredArticles}
+                selectedRelevance={selectedRelevance}
+                setSelectedRelevance={setSelectedRelevance}
+                filterByCompetitors={filterByCompetitors}
+                setFilterByCompetitors={setFilterByCompetitors}
             />
             <ArticleList
               articles={filteredArticles}

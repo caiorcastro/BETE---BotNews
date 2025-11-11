@@ -70,31 +70,28 @@ export const fetchAndParseRss = async (feed: Feed): Promise<Omit<Article, 'relev
 };
 
 export const fetchArticles = async (feeds: Feed[]): Promise<Article[]> => {
-    console.log("Fetching raw articles...");
-    
-    const allArticlePromises = feeds.map(feed => fetchAndParseRss(feed));
-    const results = await Promise.allSettled(allArticlePromises);
+    console.log("Fetching and classifying articles from feeds in parallel...");
 
-    let rawArticles: Omit<Article, 'relevance' | 'reason' | 'competitors'>[] = [];
-    results.forEach(result => {
+    const classificationPromises = feeds.map(async (feed) => {
+        const rawArticles = await fetchAndParseRss(feed);
+        if (rawArticles.length === 0) {
+            return [];
+        }
+        console.log(`-> Found ${rawArticles.length} raw articles from ${feed.name}. Classifying...`);
+        return classifyAndFilterArticles(rawArticles);
+    });
+
+    const results = await Promise.allSettled(classificationPromises);
+
+    const allClassifiedArticles: Article[] = [];
+    results.forEach((result, index) => {
         if (result.status === 'fulfilled') {
-            rawArticles = [...rawArticles, ...result.value];
+            allClassifiedArticles.push(...result.value);
+        } else {
+            console.error(`Error classifying articles for feed ${feeds[index].name}:`, result.reason);
         }
     });
-    
-    if (rawArticles.length === 0) {
-        console.log("No raw articles found to classify.");
-        return [];
-    }
-    
-    console.log(`Found ${rawArticles.length} raw articles. Sending to Gemini for classification...`);
-    try {
-        const classifiedArticles = await classifyAndFilterArticles(rawArticles);
-        console.log(`Gemini returned ${classifiedArticles.length} relevant and classified articles.`);
-        return classifiedArticles;
-    } catch(e) {
-        console.error("Failed to get classified articles from Gemini:", e);
-        // In case of failure, return empty array to show an error message on UI
-        return [];
-    }
+
+    console.log(`Finished classification. Total relevant articles: ${allClassifiedArticles.length}`);
+    return allClassifiedArticles;
 };
