@@ -55,7 +55,11 @@ export default function App() {
 
     } catch (err) {
         console.error("Error fetching articles:", err);
-        setError("Falha ao buscar artigos de uma ou mais fontes. Por favor, verifique o console para detalhes.");
+        if (err instanceof Error) {
+            setError(err.message);
+        } else {
+            setError("Falha ao buscar artigos. Um erro desconhecido ocorreu.");
+        }
     } finally {
         setIsLoading(false);
     }

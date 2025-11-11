@@ -84,13 +84,30 @@ export const fetchArticles = async (feeds: Feed[]): Promise<Article[]> => {
     const results = await Promise.allSettled(classificationPromises);
 
     const allClassifiedArticles: Article[] = [];
+    let hasFailures = false;
+    let firstReason: unknown = null;
+
     results.forEach((result, index) => {
         if (result.status === 'fulfilled') {
             allClassifiedArticles.push(...result.value);
         } else {
+            hasFailures = true;
+            if (firstReason === null) {
+                firstReason = result.reason;
+            }
             console.error(`Error classifying articles for feed ${feeds[index].name}:`, result.reason);
         }
     });
+
+    // If all feeds failed processing, throw a more informative error to be caught by the UI component.
+    if (allClassifiedArticles.length === 0 && hasFailures) {
+        const errorMessage = firstReason instanceof Error ? firstReason.message : String(firstReason);
+         if (errorMessage.includes("API key not valid")) {
+             throw new Error("A chave da API Gemini não é válida ou está faltando. Verifique a configuração.");
+        }
+        throw new Error(`Falha ao processar todas as fontes. O primeiro erro foi: ${errorMessage}`);
+    }
+
 
     console.log(`Finished classification. Total relevant articles: ${allClassifiedArticles.length}`);
     return allClassifiedArticles;

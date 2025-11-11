@@ -9,7 +9,7 @@ const Header: React.FC = () => {
           <div className="flex items-center space-x-4">
             <span className="material-icons text-primary text-3xl">newspaper</span>
             <h1 className="text-xl font-display font-bold text-white tracking-wider">
-              BETE - A Caçadora de Notícias
+              BETE <span className="hidden sm:inline">- A Caçadora de Notícias</span>
             </h1>
           </div>
           <div className="flex items-center space-x-4">
