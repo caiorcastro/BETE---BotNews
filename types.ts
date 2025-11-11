@@ -12,6 +12,10 @@ export interface Article {
   link: string;
   date: string;
   source: string;
+  // AI-powered classification fields
+  relevance: 'High' | 'Medium' | 'Low';
+  reason: string;
+  competitors?: string[];
 }
 
 export enum ChatMessageAuthor {

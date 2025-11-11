@@ -1,10 +1,6 @@
 
-import { GoogleGenAI, Chat } from "@google/genai";
-import { ChatMessage, ChatMessageAuthor, ChatMode, GroundingSource } from "../types";
-
-// IMPORTANT: This service is a mock. It simulates Gemini API calls.
-// In a real application, replace the mock logic with actual API calls.
-// The API key is assumed to be available via process.env.API_KEY.
+import { GoogleGenAI, Chat, Type } from "@google/genai";
+import { ChatMessage, ChatMessageAuthor, ChatMode, GroundingSource, Article } from "../types";
 
 let ai: GoogleGenAI | null = null;
 try {
@@ -14,6 +10,108 @@ try {
 } catch (error) {
   console.error("Failed to initialize GoogleGenAI:", error);
 }
+
+// --- CORE AI CLASSIFICATION ENGINE ---
+
+const classificationSystemPrompt = `
+You are a top-tier market intelligence analyst for BETMGM, a major player in the Brazilian online betting (iGaming) industry.
+Your sole task is to analyze a JSON list of news articles and return a new JSON list containing ONLY the articles that are relevant to BETMGM's interests.
+
+**Your analysis must follow these strict rules:**
+
+1.  **FILTERING:** You MUST discard any article that is NOT DIRECTLY related to the following topics:
+    *   **Industry & Regulation:** Betting/iGaming regulation in Brazil, licensing, compliance, taxes (SIGAP, etc.), government decrees (Ministério da Fazenda).
+    *   **Competitors:** Any news about our main competitors.
+    *   **Marketing & Sponsorship:** Competitor marketing campaigns, new sponsorships (especially football clubs), brand ambassadors, advertising news.
+    *   **Product & Technology:** New features from competitors (apps, cashout, new betting types), payment methods (PIX), technology trends.
+    *   **Market & Economy:** Market share data, revenue reports, economic projections for the betting sector in Brazil/LATAM.
+    *   **Major Sports Business:** News about major football leagues (Brasileirão, Libertadores) that directly impacts betting or sponsorships.
+    *   **STRICTLY IGNORE:** General sports news (match results, player injuries unless it's a massive market-moving event), celebrity gossip, general politics, and anything not directly tied to the business of betting.
+
+2.  **CLASSIFICATION:** For each relevant article, you MUST assign a relevance level based on these criteria:
+    *   **'High':** Immediate action/awareness required.
+        *   Critical regulation changes (new laws, licensing lists, site blocks).
+        *   Major moves by Top-Tier competitors (bet365, Betano, Stake, Sportingbet, Betfair).
+        *   Major sponsorships (Série A clubs, Seleção Brasileira).
+    *   **'Medium':** Important for monitoring.
+        *   Moves by Mid-Tier/Emerging competitors.
+        *   General marketing campaigns, influencer partnerships.
+        *   Industry events (e.g., Brazilian iGaming Summit).
+    *   **'Low':** Informative, good to know.
+        *   General market trends, international news with potential future impact, minor product updates from smaller competitors.
+
+3.  **COMPETITOR IDENTIFICATION:** If an article mentions any of these competitors, you MUST list their names in the 'competitors' array:
+    *   **Top Tier:** bet365, Betano, Stake, Sportingbet, Betfair
+    *   **Mid Tier:** Novibet, Betsson, F12.Bet, Parimatch, VBET
+    *   **Emergentes:** Superbet, Multibet, Esportivabet, BetBoom, Brazino777
+
+4.  **REASON:** Provide a very brief, concise reason (max 10 words) for your classification decision. Example: "Major regulation change impacting licensing." or "New sponsorship by Top-Tier competitor."
+
+5.  **OUTPUT:** You MUST return a single JSON object with one key: "articles". The value must be an array of article objects conforming to the provided JSON schema. If no articles are relevant, return an empty array.
+`;
+
+const classificationSchema = {
+  type: Type.OBJECT,
+  properties: {
+    articles: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          id: { type: Type.STRING },
+          title: { type: Type.STRING },
+          description: { type: Type.STRING },
+          link: { type: Type.STRING },
+          date: { type: Type.STRING },
+          source: { type: Type.STRING },
+          relevance: { type: Type.STRING, enum: ['High', 'Medium', 'Low'] },
+          reason: { type: Type.STRING },
+          competitors: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+          },
+        },
+        required: ['id', 'title', 'description', 'link', 'date', 'source', 'relevance', 'reason'],
+      },
+    },
+  },
+};
+
+
+export const classifyAndFilterArticles = async (
+  rawArticles: Omit<Article, 'relevance' | 'reason' | 'competitors'>[]
+): Promise<Article[]> => {
+  if (!ai) {
+    throw new Error("Gemini AI not initialized.");
+  }
+  if (rawArticles.length === 0) {
+    return [];
+  }
+
+  const prompt = `Here is the list of articles to analyze:\n\n${JSON.stringify(rawArticles, null, 2)}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-pro',
+      contents: prompt,
+      config: {
+        systemInstruction: classificationSystemPrompt,
+        responseMimeType: 'application/json',
+        responseSchema: classificationSchema,
+      },
+    });
+    
+    const jsonText = response.text;
+    const result = JSON.parse(jsonText);
+    return result.articles as Article[];
+  } catch (error) {
+      console.error("Error in Gemini classification:", error);
+      throw new Error("Failed to classify articles using Gemini AI.");
+  }
+};
+
+
+// --- CHATBOT FUNCTIONALITY ---
 
 let chatInstance: Chat | null = null;
 
@@ -56,7 +154,6 @@ export const getGeminiResponse = async (
     try {
         switch (mode) {
             case ChatMode.FLASH:
-                // Using a simplified chat history for this mode
                 const chat = getChatInstance();
                 const result = await chat.sendMessage({ message: prompt });
                 return { text: result.text };

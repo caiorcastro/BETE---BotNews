@@ -1,20 +1,17 @@
-
 import { Feed, Article } from '../types';
+import { classifyAndFilterArticles } from './geminiService';
 
-// Use a CORS proxy to fetch feeds from the client-side.
-// This is suitable for a demo/prototype. For production, a dedicated backend is recommended.
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+const CORS_PROXY = 'https://corsproxy.io/?';
 
-const parseRSS = (xmlString: string, feedName: string): Article[] => {
+const parseRSS = (xmlString: string, feedName: string): Omit<Article, 'relevance' | 'reason' | 'competitors'>[] => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlString, 'application/xml');
-    const articles: Article[] = [];
+    const articles: Omit<Article, 'relevance' | 'reason' | 'competitors'>[] = [];
 
-    // Handle parsing errors
     const parseError = doc.querySelector('parsererror');
     if (parseError) {
         console.error(`Error parsing XML for feed ${feedName}:`, parseError.textContent);
-        return []; // Return empty array if XML is malformed
+        return [];
     }
     
     const items = doc.querySelectorAll('item, entry');
@@ -23,20 +20,34 @@ const parseRSS = (xmlString: string, feedName: string): Article[] => {
         const title = item.querySelector('title')?.textContent?.trim() || 'No title';
         const link = item.querySelector('link')?.getAttribute('href') || item.querySelector('link')?.textContent || '#';
         
-        // Sanitize description from HTML tags
-        let description = item.querySelector('description')?.textContent || item.querySelector('content')?.textContent || '';
+        const descriptionHTML = item.querySelector('description')?.textContent 
+                           || item.querySelector('content')?.textContent 
+                           || item.getElementsByTagName('content:encoded')[0]?.textContent 
+                           || '';
         const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = description;
-        description = tempDiv.textContent || tempDiv.innerText || '';
+        tempDiv.innerHTML = descriptionHTML;
+        let description = (tempDiv.textContent || tempDiv.innerText || '').trim();
 
-        const dateString = item.querySelector('pubDate')?.textContent || item.querySelector('updated')?.textContent || new Date().toISOString();
+        if (!description) {
+            description = 'Sem resumo disponível.';
+        }
+
+        const dateString = item.querySelector('pubDate')?.textContent || item.querySelector('updated')?.textContent;
+        let finalDate = new Date(); 
+
+        if (dateString) {
+            const parsedDate = new Date(dateString);
+            if (!isNaN(parsedDate.getTime())) {
+                finalDate = parsedDate;
+            }
+        }
         
         articles.push({
             id: `${feedName}-${link}-${title}`,
             title,
             link,
-            description: description.substring(0, 250) + (description.length > 250 ? '...' : ''), // Truncate description
-            date: new Date(dateString).toISOString(),
+            description: description.substring(0, 300) + (description.length > 300 ? '...' : ''),
+            date: finalDate.toISOString(),
             source: feedName,
         });
     });
@@ -44,34 +55,46 @@ const parseRSS = (xmlString: string, feedName: string): Article[] => {
     return articles;
 }
 
-
-export const fetchAndParseRss = async (feed: Feed): Promise<Article[]> => {
+export const fetchAndParseRss = async (feed: Feed): Promise<Omit<Article, 'relevance' | 'reason' | 'competitors'>[]> => {
     try {
         const response = await fetch(`${CORS_PROXY}${encodeURIComponent(feed.url)}`);
         if (!response.ok) {
-            throw new Error(`Failed to fetch feed ${feed.name}: ${response.statusText}`);
+            throw new Error(`Failed to fetch feed ${feed.name}: ${response.status} ${response.statusText}`);
         }
         const xmlString = await response.text();
         return parseRSS(xmlString, feed.name);
     } catch (error) {
         console.error(`Error processing feed ${feed.name}:`, error);
-        return []; // Return empty array for this feed on error, so other feeds can still load
+        return [];
     }
 };
 
 export const fetchArticles = async (feeds: Feed[]): Promise<Article[]> => {
-    console.log("Fetching live articles for feeds:", feeds);
+    console.log("Fetching raw articles...");
     
     const allArticlePromises = feeds.map(feed => fetchAndParseRss(feed));
-    
     const results = await Promise.allSettled(allArticlePromises);
 
-    let allArticles: Article[] = [];
+    let rawArticles: Omit<Article, 'relevance' | 'reason' | 'competitors'>[] = [];
     results.forEach(result => {
         if (result.status === 'fulfilled') {
-            allArticles = [...allArticles, ...result.value];
+            rawArticles = [...rawArticles, ...result.value];
         }
     });
-
-    return allArticles;
+    
+    if (rawArticles.length === 0) {
+        console.log("No raw articles found to classify.");
+        return [];
+    }
+    
+    console.log(`Found ${rawArticles.length} raw articles. Sending to Gemini for classification...`);
+    try {
+        const classifiedArticles = await classifyAndFilterArticles(rawArticles);
+        console.log(`Gemini returned ${classifiedArticles.length} relevant and classified articles.`);
+        return classifiedArticles;
+    } catch(e) {
+        console.error("Failed to get classified articles from Gemini:", e);
+        // In case of failure, return empty array to show an error message on UI
+        return [];
+    }
 };
