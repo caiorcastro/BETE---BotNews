@@ -11,7 +11,10 @@ import ArticleControls from './components/ArticleControls';
 import LandingPage from './components/LandingPage';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Check localStorage for an existing session on initial load
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('isAuthenticated') === 'true';
+  });
 
   // State for the main application
   const [feeds, setFeeds] = useState<Feed[]>(INITIAL_FEEDS);
@@ -28,12 +31,15 @@ export default function App() {
   const [selectedRelevance, setSelectedRelevance] = useState<string[]>([]);
   const [filterByCompetitors, setFilterByCompetitors] = useState<boolean>(false);
   const [feedCounts, setFeedCounts] = useState<Record<string, number>>({});
+  const [nextRefresh, setNextRefresh] = useState<Date | null>(null);
 
   const handleLoginSuccess = () => {
+    localStorage.setItem('isAuthenticated', 'true');
     setIsAuthenticated(true);
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
     setIsAuthenticated(false);
     // Optional: Reset state on logout
     setArticles([]);
@@ -87,6 +93,50 @@ export default function App() {
     if (isAuthenticated) {
         fetchArticles();
     }
+  }, [isAuthenticated, fetchArticles]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+  
+    let timerId: number;
+  
+    const scheduleNextRefresh = () => {
+      const now = new Date();
+      // Horários: 8:30, 12:00, 16:30
+      const schedule = [8.5, 12, 16.5]; 
+  
+      const getNextScheduledTime = () => {
+        for (const hour of schedule) {
+          const targetTime = new Date();
+          targetTime.setHours(Math.floor(hour), (hour % 1) * 60, 0, 0);
+          if (targetTime > now) {
+            return targetTime;
+          }
+        }
+        // Se todos os horários de hoje já passaram, agenda para o primeiro de amanhã
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const firstHour = schedule[0];
+        tomorrow.setHours(Math.floor(firstHour), (firstHour % 1) * 60, 0, 0);
+        return tomorrow;
+      };
+  
+      const nextTime = getNextScheduledTime();
+      setNextRefresh(nextTime);
+  
+      const delay = nextTime.getTime() - now.getTime();
+  
+      timerId = window.setTimeout(() => {
+        console.log(`Automatic refresh triggered at ${new Date().toLocaleTimeString()}`);
+        fetchArticles();
+        scheduleNextRefresh(); // Reagenda para o próximo horário
+      }, delay);
+    };
+  
+    scheduleNextRefresh();
+  
+    return () => clearTimeout(timerId);
+  
   }, [isAuthenticated, fetchArticles]);
 
   useEffect(() => {
@@ -165,6 +215,7 @@ export default function App() {
                 setSelectedRelevance={setSelectedRelevance}
                 filterByCompetitors={filterByCompetitors}
                 setFilterByCompetitors={setFilterByCompetitors}
+                nextRefresh={nextRefresh}
             />
             <ArticleList
               articles={filteredArticles}
@@ -181,6 +232,16 @@ export default function App() {
         initialPrompt={initialChatPrompt}
         setInitialPrompt={setInitialChatPrompt}
       />
+       {isAuthenticated && !isChatBotOpen && (
+          <button
+            onClick={() => setIsChatBotOpen(true)}
+            className="fixed bottom-6 right-6 bg-primary text-black rounded-full p-4 shadow-lg hover:scale-110 transition-transform z-30 animate-pulse"
+            aria-label="Abrir Chat com Gemini"
+            title="Abrir Chat com Gemini"
+          >
+            <span className="material-icons text-2xl">chat</span>
+          </button>
+        )}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Article } from '../types';
 
@@ -14,6 +15,7 @@ interface ArticleControlsProps {
     setSelectedRelevance: (relevance: string[]) => void;
     filterByCompetitors: boolean;
     setFilterByCompetitors: (filter: boolean) => void;
+    nextRefresh: Date | null;
 }
 
 const ArticleControls: React.FC<ArticleControlsProps> = ({
@@ -28,7 +30,8 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
     selectedRelevance,
     setSelectedRelevance,
     filterByCompetitors,
-    setFilterByCompetitors
+    setFilterByCompetitors,
+    nextRefresh
 }) => {
 
     const handleExport = () => {
@@ -129,7 +132,16 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
                     />
                     <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
                 </div>
-                <div className="flex items-center gap-2 ml-auto">
+                <div className="flex items-center gap-4 ml-auto">
+                    <div className="text-xs text-gray-400 text-center hidden sm:block">
+                        {nextRefresh && (
+                            <>
+                                <span>Próxima atualização:</span>
+                                <br/>
+                                <span className="font-semibold">{nextRefresh.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </>
+                        )}
+                    </div>
                     <ActionButton onClick={onRefresh} icon="refresh">Atualizar Fontes</ActionButton>
                     <ActionButton onClick={handleExport} icon="download">Exportar CSV</ActionButton>
                 </div>

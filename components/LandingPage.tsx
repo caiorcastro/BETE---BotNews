@@ -36,24 +36,25 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
       
       <main>
         {/* Hero Section */}
-        <section className="relative text-center py-20 sm:py-28 lg:py-32 px-4 overflow-hidden">
+        <section className="relative py-20 sm:py-24 lg:py-28 px-4 overflow-hidden">
              <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
-             <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background-dark"></div>
-            <div className="relative z-10">
-                <h1 className="text-4xl sm:text-5xl md:text-6xl font-display font-extrabold text-white leading-tight">
-                    Inteligência de Mercado. <br />
-                    <span className="text-primary">Decisões em Tempo Real.</span>
-                </h1>
-                <p className="mt-6 text-lg text-gray-300 max-w-3xl mx-auto">
-                    BETE transforma o ruído da internet em insights estratégicos. Monitore concorrentes, regulação e tendências do mercado de iGaming, tudo em um só lugar, com o poder da IA do Gemini.
-                </p>
-            </div>
-        </section>
-
-        {/* Auth Section */}
-        <section id="login" className="px-4 pb-16">
-            <div className="max-w-md mx-auto">
-                <Auth onLoginSuccess={onLoginSuccess} />
+             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background-dark"></div>
+            <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="grid lg:grid-cols-2 gap-12 items-center">
+                    <div className="text-center lg:text-left">
+                         <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-extrabold text-white leading-tight">
+                            Inteligência de Mercado para <span className="text-primary">iGaming & Sportsbook</span>.
+                            <br />
+                            Análise estratégica para a BetMGM.
+                        </h1>
+                        <p className="mt-6 text-base text-gray-300 max-w-xl mx-auto lg:mx-0">
+                            BETE é sua analista de IA dedicada, rastreando notícias, concorrentes e a regulamentação do mercado de apostas no Brasil para transformar dados em decisões estratégicas.
+                        </p>
+                    </div>
+                    <div className="max-w-md mx-auto lg:mx-0 lg:justify-self-end">
+                        <Auth onLoginSuccess={onLoginSuccess} />
+                    </div>
+                </div>
             </div>
         </section>
         

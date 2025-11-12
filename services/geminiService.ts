@@ -117,6 +117,13 @@ export const classifyAndFilterArticles = async (
 
 let chatInstance: Chat | null = null;
 
+const chatSystemInstruction = `
+You are a specialized market intelligence analyst for the Brazilian iGaming and Sportsbook industry. 
+Your knowledge is focused on market regulation, competitor activities, sponsorships, and technology trends related to online betting in Brazil.
+Answer questions concisely, providing strategic insights based on the context of recent news. 
+Do not answer questions outside of this scope. If asked about an unrelated topic, politely state that you are specialized in the Brazilian betting market.
+`;
+
 const getChatInstance = (): Chat => {
     if (!ai) {
         throw new Error("Gemini AI not initialized. Please provide an API key.");
@@ -125,6 +132,9 @@ const getChatInstance = (): Chat => {
         chatInstance = ai.chats.create({
             model: 'gemini-2.5-flash-lite',
             history: [],
+            config: {
+                systemInstruction: chatSystemInstruction,
+            },
         });
     }
     return chatInstance;

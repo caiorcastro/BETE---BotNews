@@ -7,6 +7,21 @@ interface AuthProps {
 
 type AuthMode = 'LOGIN' | 'REGISTER' | 'RESET';
 
+// Helper to get users from localStorage
+const getUsers = () => {
+    try {
+        const users = localStorage.getItem('bete_users');
+        return users ? JSON.parse(users) : {};
+    } catch (e) {
+        return {};
+    }
+};
+
+// Helper to save users to localStorage
+const saveUsers = (users: object) => {
+    localStorage.setItem('bete_users', JSON.stringify(users));
+};
+
 const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
   const [mode, setMode] = useState<AuthMode>('LOGIN');
   
@@ -39,43 +54,64 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     clearFormState();
-    
+    setIsLoading(true);
+
     if (password !== confirmPassword) {
         setError("As senhas não coincidem.");
+        setIsLoading(false);
         return;
     }
-
     if (password.length < 6) {
         setError("A senha deve ter pelo menos 6 caracteres.");
+        setIsLoading(false);
         return;
     }
 
     const allowedDomains = ['artplan.com.br', 'betmgm.com.br'];
-    // Adicione seu e-mail pessoal aqui para o acesso "EU"
-    const personalEmailWhitelist = ['eu@exemplo.com']; 
+    const personalEmailWhitelist = ['caiorcastro@gmail.com']; 
     const emailDomain = email.split('@')[1];
+    const lowerCaseEmail = email.toLowerCase();
 
-    if (allowedDomains.includes(emailDomain) || personalEmailWhitelist.includes(email.toLowerCase())) {
-        setIsLoading(true);
-        // Simula uma chamada de API para registro
-        setTimeout(() => {
-            setSuccess("Conta criada com sucesso! Por favor, faça o login.");
-            switchMode('LOGIN');
-        }, 1500);
-    } else {
+    if (!allowedDomains.includes(emailDomain) && !personalEmailWhitelist.includes(lowerCaseEmail)) {
         setError("Acesso restrito. Use um e-mail @artplan.com.br ou @betmgm.com.br.");
+        setIsLoading(false);
+        return;
     }
+
+    setTimeout(() => {
+        const users = getUsers();
+        if (users[lowerCaseEmail]) {
+            setError("Este e-mail já está registrado.");
+            setIsLoading(false);
+            return;
+        }
+
+        // Simple "hashing" for simulation - DO NOT USE IN PRODUCTION
+        const hashedPassword = btoa(password); 
+        users[lowerCaseEmail] = { name, password: hashedPassword };
+        saveUsers(users);
+
+        setSuccess("Conta criada com sucesso! Por favor, faça o login.");
+        switchMode('LOGIN');
+    }, 1000);
   };
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     clearFormState();
     setIsLoading(true);
-    // Simula uma chamada de API de login
+    
     setTimeout(() => {
-        // Em um app real, aqui você validaria o email e a senha
-        onLoginSuccess();
-        setIsLoading(false);
+        const users = getUsers();
+        const lowerCaseEmail = email.toLowerCase();
+        const user = users[lowerCaseEmail];
+
+        if (user && atob(user.password) === password) {
+            onLoginSuccess();
+        } else {
+            setError("E-mail ou senha inválidos.");
+            setIsLoading(false);
+        }
     }, 1000);
   };
   
@@ -83,9 +119,9 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
     e.preventDefault();
     clearFormState();
     setIsLoading(true);
-    // Simula o envio de um e-mail de redefinição
+    // This remains a simulation as we can't send emails from the frontend.
     setTimeout(() => {
-        setSuccess("Se uma conta existir para este e-mail, um link de redefinição foi enviado.");
+        setSuccess("Se uma conta existir para este e-mail, um link de redefinição foi enviado (simulação).");
         setIsLoading(false);
     }, 1500);
   };
