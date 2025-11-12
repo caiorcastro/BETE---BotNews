@@ -53,36 +53,8 @@ Your sole task is to analyze a JSON list of news articles and return a new JSON 
 
 4.  **REASON (in Portuguese):** Provide a very brief, concise reason (max 15 words) **in Brazilian Portuguese** for your classification decision. Example: "Grande mudança na regulamentação de licenças." or "Novo patrocínio de concorrente Top-Tier."
 
-5.  **OUTPUT:** You MUST return a single JSON object with one key: "articles". The value must be an array of article objects conforming to the provided JSON schema. If no articles are relevant, return an empty array.
+5.  **OUTPUT:** Your response MUST be a single, raw JSON object and nothing else. It should start with \{ and end with \}. The JSON object must have one key: "articles". The value must be an array of article objects. If no articles are relevant, return an empty array.
 `;
-
-const classificationSchema = {
-  type: Type.OBJECT,
-  properties: {
-    articles: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          id: { type: Type.STRING },
-          title: { type: Type.STRING },
-          description: { type: Type.STRING },
-          link: { type: Type.STRING },
-          date: { type: Type.STRING },
-          source: { type: Type.STRING },
-          relevance: { type: Type.STRING, enum: ['High', 'Medium', 'Low'] },
-          reason: { type: Type.STRING },
-          competitors: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-          },
-        },
-        required: ['id', 'title', 'description', 'link', 'date', 'source', 'relevance', 'reason'],
-      },
-    },
-  },
-};
-
 
 export const classifyAndFilterArticles = async (
   rawArticles: Omit<Article, 'relevance' | 'reason' | 'competitors'>[]
@@ -98,16 +70,25 @@ export const classifyAndFilterArticles = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.5-pro',
       contents: prompt,
       config: {
         systemInstruction: classificationSystemPrompt,
-        responseMimeType: 'application/json',
-        responseSchema: classificationSchema,
       },
     });
     
-    const jsonText = response.text;
+    const textResponse = response.text;
+    
+    // Find the start and end of the JSON object
+    const startIndex = textResponse.indexOf('{');
+    const endIndex = textResponse.lastIndexOf('}');
+    
+    if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+      throw new Error("Could not find a valid JSON object in the response.");
+    }
+    
+    const jsonText = textResponse.substring(startIndex, endIndex + 1);
+
     const result = JSON.parse(jsonText);
     return result.articles as Article[];
   } catch (error) {
@@ -195,7 +176,7 @@ const getChatInstance = (): Chat => {
     }
     if (!chatInstance) {
         chatInstance = ai.chats.create({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.5-pro',
             history: [],
         });
     }
@@ -234,7 +215,7 @@ export const getGeminiResponse = async (
 
             case ChatMode.GROUNDED:
                 const groundedResponse = await ai.models.generateContent({
-                    model: "gemini-2.5-flash",
+                    model: "gemini-2.5-pro",
                     contents: prompt,
                     config: {
                         tools: [{googleSearch: {}}],

@@ -94,6 +94,38 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
         setStartDate(toYYYYMMDD(start));
     };
 
+    // Helper to check if a date preset is currently active
+    const isPresetActive = (days: number) => {
+        const toYYYYMMDD = (date: Date) => {
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        };
+
+        const today = new Date();
+        const end = new Date();
+        const start = new Date();
+
+        let expectedStartDate: string;
+        let expectedEndDate: string;
+
+        if (days === 0) { // Hoje
+            expectedStartDate = toYYYYMMDD(today);
+            expectedEndDate = toYYYYMMDD(today);
+        } else if (days === 1) { // D-1
+            start.setDate(today.getDate() - 1);
+            expectedStartDate = toYYYYMMDD(start);
+            expectedEndDate = toYYYYMMDD(start);
+        } else { // Outros períodos (7d, 15d, 30d)
+            start.setDate(today.getDate() - days);
+            expectedStartDate = toYYYYMMDD(start);
+            expectedEndDate = toYYYYMMDD(end);
+        }
+
+        return startDate === expectedStartDate && endDate === expectedEndDate;
+    };
+
     const ActionButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & {icon: string}> = ({children, icon, ...props}) => (
          <button
             {...props}
@@ -118,8 +150,8 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
         )
     };
 
-    const DatePresetButton: React.FC<{days: number, label: string, onClick: (days: number) => void}> = ({days, label, onClick}) => (
-        <button onClick={() => onClick(days)} className="px-3 py-1 text-xs font-semibold rounded-full bg-gray-700 hover:bg-gray-600 text-gray-200 transition-colors">
+    const DatePresetButton: React.FC<{days: number, label: string, onClick: (days: number) => void, isActive: boolean}> = ({days, label, onClick, isActive}) => (
+        <button onClick={() => onClick(days)} className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${isActive ? 'bg-blue-500 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}`}>
             {label}
         </button>
     );
@@ -155,11 +187,26 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-gray-400">Período:</span>
-                    <DatePresetButton days={0} label="Hoje" onClick={setDateRange} />
-                    <DatePresetButton days={1} label="D-1" onClick={setDateRange} />
-                    <DatePresetButton days={7} label="7d" onClick={setDateRange} />
-                    <DatePresetButton days={15} label="15d" onClick={setDateRange} />
-                    <DatePresetButton days={30} label="30d" onClick={setDateRange} />
+                    <DatePresetButton days={0} label="Hoje" onClick={setDateRange} isActive={isPresetActive(0)} />
+                    <DatePresetButton days={1} label="D-1" onClick={setDateRange} isActive={isPresetActive(1)} />
+                    <DatePresetButton days={7} label="7d" onClick={setDateRange} isActive={isPresetActive(7)} />
+                    <DatePresetButton days={15} label="15d" onClick={setDateRange} isActive={isPresetActive(15)} />
+                    <DatePresetButton days={30} label="30d" onClick={setDateRange} isActive={isPresetActive(30)} />
+                </div>
+                 <div className="flex items-center gap-2">
+                    <input 
+                        type="date" 
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="bg-gray-700 text-white border border-gray-600 rounded-md px-2 py-1 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                    />
+                    <span className="text-gray-400">-</span>
+                     <input 
+                        type="date" 
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="bg-gray-700 text-white border border-gray-600 rounded-md px-2 py-1 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                    />
                 </div>
                 <div className="flex items-center">
                     <button

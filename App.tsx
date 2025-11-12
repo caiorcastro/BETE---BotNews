@@ -1,4 +1,4 @@
-
+import { useState, useCallback, useEffect } from 'react';
 import { Feed, Article } from './types';
 import { INITIAL_FEEDS, COMPETITOR_LIST } from './constants';
 import { fetchArticles as fetchLiveArticles } from './services/rssService';
@@ -15,7 +15,7 @@ export default function App() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
   const [selectedFeed, setSelectedFeed] = useState<string>('all');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isChatBotOpen, setIsChatBotOpen] = useState<boolean>(false);
   const [initialChatPrompt, setInitialChatPrompt] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -64,10 +64,6 @@ export default function App() {
         setIsLoading(false);
     }
   }, [feeds]);
-
-  useEffect(() => {
-    fetchArticles();
-  }, [fetchArticles]);
 
   useEffect(() => {
     let currentArticles = articles;
@@ -127,7 +123,7 @@ export default function App() {
   };
 
   const handleSearch = () => {
-    setTriggerSearch(prev => prev + 1);
+    fetchArticles();
   };
 
   return (
@@ -183,3 +179,14 @@ export default function App() {
             ) : (
               <ReportGenerator articles={articles} />
             )}
+          </section>
+        </div>
+      </main>
+      <ChatBot 
+        isOpen={isChatBotOpen} 
+        onClose={() => setIsChatBotOpen(false)}
+        initialPrompt={initialChatPrompt}
+      />
+    </div>
+  );
+}
