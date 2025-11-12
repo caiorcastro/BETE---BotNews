@@ -88,37 +88,39 @@ export const fetchAndParseRss = async (feed: Feed): Promise<Omit<Article, 'relev
     }
 };
 
-export const fetchArticles = async (feeds: Feed[]): Promise<Article[]> => {
-    console.log("Fetching and classifying articles from all feeds in parallel...");
+export const fetchArticles = async (
+    feeds: Feed[],
+    onArticlesClassified: (newArticles: Article[]) => void
+): Promise<void> => {
+    console.log("Fetching and classifying articles from all feeds sequentially...");
 
-    const processingPromises = feeds.map(async (feed) => {
+    for (const feed of feeds) {
         try {
             const rawArticles = await fetchAndParseRss(feed);
             if (rawArticles.length === 0) {
-                return []; // No articles found, not an error
+                console.log(`-> No articles found for ${feed.name}. Skipping.`);
+                continue; // No articles found, move to the next feed.
             }
+
             console.log(`-> Found ${rawArticles.length} raw articles from ${feed.name}. Classifying...`);
             const classifiedArticles = await classifyAndFilterArticles(rawArticles);
-            return classifiedArticles;
-        } catch (error) {
-            console.error(`Error processing feed ${feed.name} in parallel:`, error);
-            // If one feed fails, we return an empty array for it but let others continue.
-            return []; 
-        }
-    });
 
-    try {
-        const results = await Promise.all(processingPromises);
-        const allArticles = results.flat(); // Flatten the array of arrays
-        console.log(`Finished processing all feeds. Found ${allArticles.length} relevant articles.`);
-        return allArticles;
-    } catch (error) {
-        console.error("A critical error occurred during parallel article processing:", error);
-        // This catch block might be redundant if individual promises handle their errors,
-        // but it's good for catching issues with Promise.all itself.
-        if (error instanceof Error && error.message.includes("API key")) {
-            throw new Error("A chave da API Gemini não é válida ou está faltando. Verifique a configuração.");
+            if (classifiedArticles.length > 0) {
+                console.log(`-> Classified ${classifiedArticles.length} relevant articles from ${feed.name}.`);
+                onArticlesClassified(classifiedArticles); // Stream results to the UI
+            } else {
+                console.log(`-> No relevant articles found for ${feed.name} after classification.`);
+            }
+        } catch (error) {
+            console.error(`Error processing feed ${feed.name}, skipping to next. Error:`, error);
+            // If one feed fails, we log it and continue with the next one.
+            // This makes the process more resilient.
+            if (error instanceof Error && error.message.includes("API key")) {
+                // If it's a critical API key error, we should stop the whole process.
+                throw error;
+            }
         }
-        throw new Error(`Falha ao processar as fontes de notícias.`);
     }
+
+    console.log("Finished processing all feeds.");
 };

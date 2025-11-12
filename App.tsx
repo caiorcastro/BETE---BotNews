@@ -53,36 +53,46 @@ export default function App() {
   };
 
   const handleRefresh = useCallback(async () => {
-      setIsLoading(true);
-      setError(null);
-      setArticles([]);
-      setFilteredArticles([]);
-      setFeedCounts({});
+    setIsLoading(true);
+    setError(null);
+    setArticles([]);
+    setFilteredArticles([]);
+    
+    // Initialize counts to 0 for all feeds to ensure they appear in the list
+    const initialCounts: Record<string, number> = {};
+    feeds.forEach(feed => { initialCounts[feed.name] = 0; });
+    setFeedCounts(initialCounts);
       
-      try {
-          const fetchedArticles = await fetchArticles(feeds);
+    try {
+        const onArticlesClassified = (newlyClassifiedArticles: Article[]) => {
+            // Update articles incrementally, ensuring no duplicates and maintaining sort order
+            setArticles(prevArticles => {
+                const articlesMap = new Map(prevArticles.map(a => [a.id, a]));
+                newlyClassifiedArticles.forEach(a => articlesMap.set(a.id, a));
+                return Array.from(articlesMap.values())
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            });
 
-          const uniqueArticles = Array.from(new Map(fetchedArticles.map(item => [item.id, item])).values())
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          
-          setArticles(uniqueArticles);
+            // Update feed counts incrementally
+            setFeedCounts(prevCounts => {
+                const newCounts = { ...prevCounts };
+                newlyClassifiedArticles.forEach(article => {
+                    newCounts[article.source] = (newCounts[article.source] || 0) + 1;
+                });
+                return newCounts;
+            });
+        };
+        
+        // The service now streams results via the callback
+        await fetchArticles(feeds, onArticlesClassified);
+        setError(null);
 
-          const counts: Record<string, number> = {};
-          feeds.forEach(feed => { counts[feed.name] = 0; });
-          uniqueArticles.forEach(article => {
-              if (counts[article.source] !== undefined) {
-                  counts[article.source]++;
-              }
-          });
-          setFeedCounts(counts);
-          setError(null);
-
-      } catch (error) {
-          console.error("Error during refresh:", error);
-          setError(error instanceof Error ? error.message : "Ocorreu um erro desconhecido durante a atualização.");
-      } finally {
-          setIsLoading(false);
-      }
+    } catch (error) {
+        console.error("Error during refresh:", error);
+        setError(error instanceof Error ? error.message : "Ocorreu um erro desconhecido durante a atualização.");
+    } finally {
+        setIsLoading(false);
+    }
   }, [feeds]);
 
 

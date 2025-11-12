@@ -80,26 +80,13 @@ const ArticleItem: React.FC<{ article: Article; onAnalyze: () => void }> = ({ ar
   );
 };
 
-const SkeletonLoader: React.FC = () => (
-    <div className="bg-card-dark rounded-lg shadow-md overflow-hidden flex flex-col">
-      <div className="p-5 animate-pulse">
-        <div className="flex items-center justify-between mb-3">
-          <div className="h-4 bg-gray-700 rounded w-1/4"></div>
-          <div className="h-4 bg-gray-700 rounded w-1/5"></div>
-        </div>
-        <div className="h-5 bg-gray-700 rounded w-3/4 mb-3"></div>
-        <div className="h-4 bg-gray-700 rounded w-full mb-2"></div>
-        <div className="h-4 bg-gray-700 rounded w-5/6"></div>
-      </div>
-      <div className="bg-card-footer-dark px-5 py-3 h-11">
-      </div>
-    </div>
-);
-
 const ArticleList: React.FC<ArticleListProps> = ({ articles, isLoading, onAnalyzeArticle, error }) => {
 
   const renderContent = () => {
-    if (isLoading) {
+    const hasArticles = articles.length > 0;
+
+    // Case 1: Initial loading state, no articles yet
+    if (isLoading && !hasArticles) {
       return (
         <div className="text-center py-10 bg-card-dark rounded-lg">
              <div className="flex justify-center items-center gap-2 mb-4">
@@ -108,12 +95,13 @@ const ArticleList: React.FC<ArticleListProps> = ({ articles, isLoading, onAnalyz
                 <div className="w-4 h-4 bg-primary rounded-full animate-pulse"></div>
             </div>
             <h3 className="text-xl font-semibold text-gray-300">BETE está caçando notícias...</h3>
-            <p className="text-gray-400 mt-2">Analisando e classificando artigos com a IA Gemini.</p>
+            <p className="text-gray-400 mt-2">Analisando e classificando artigos com a IA Gemini. Os resultados aparecerão aqui em tempo real.</p>
         </div>
       );
     }
 
-    if (error) {
+    // Case 2: Error occurred before any articles could be loaded
+    if (error && !hasArticles) {
          return (
             <div className="text-center py-20 bg-card-dark rounded-lg">
                 <span className="material-icons text-5xl text-red-500">error_outline</span>
@@ -123,7 +111,8 @@ const ArticleList: React.FC<ArticleListProps> = ({ articles, isLoading, onAnalyz
         );
     }
   
-    if (articles.length === 0) {
+    // Case 3: Finished loading, but no relevant articles found
+    if (!isLoading && !hasArticles) {
       return (
         <div className="text-center py-20 bg-card-dark rounded-lg">
           <span className="material-icons text-5xl text-gray-600">inbox</span>
@@ -133,12 +122,30 @@ const ArticleList: React.FC<ArticleListProps> = ({ articles, isLoading, onAnalyz
       );
     }
   
+    // Case 4: Display articles, and show an inline loader/error if the process is still running.
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {articles.map(article => (
-          <ArticleItem key={article.id} article={article} onAnalyze={() => onAnalyzeArticle(article)} />
-        ))}
-      </div>
+        <>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {articles.map(article => (
+                    <ArticleItem key={article.id} article={article} onAnalyze={() => onAnalyzeArticle(article)} />
+                ))}
+            </div>
+            
+            {isLoading && hasArticles && (
+                 <div className="text-center py-8 flex items-center justify-center gap-3">
+                    <div className="w-3 h-3 bg-primary rounded-full animate-pulse [animation-delay:-0.3s]"></div>
+                    <div className="w-3 h-3 bg-primary rounded-full animate-pulse [animation-delay:-0.15s]"></div>
+                    <div className="w-3 h-3 bg-primary rounded-full animate-pulse"></div>
+                    <span className="text-gray-400 font-semibold">Buscando mais notícias...</span>
+                </div>
+            )}
+
+            {error && hasArticles && (
+                <div className="text-center py-8 text-red-400">
+                    <p>Ocorreu um erro ao buscar notícias adicionais. A lista pode estar incompleta.</p>
+                </div>
+            )}
+        </>
     );
   }
 
