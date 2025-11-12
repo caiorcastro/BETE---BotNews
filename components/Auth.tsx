@@ -1,13 +1,8 @@
 
 import React, { useState } from 'react';
-import { auth, db } from '../services/firebase';
-import { 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword,
-    sendPasswordResetEmail,
-    AuthError
-} from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { supabase } from '../services/supabase';
+import { AuthError } from '@supabase/supabase-js';
+
 
 type AuthMode = 'LOGIN' | 'REGISTER' | 'RESET';
 
@@ -38,21 +33,17 @@ const Auth: React.FC = () => {
     setName('');
   };
 
-  const mapFirebaseError = (authError: AuthError): string => {
-    switch (authError.code) {
-        case 'auth/email-already-in-use':
-            return 'Este e-mail já está registrado.';
-        case 'auth/invalid-email':
-            return 'O formato do e-mail é inválido.';
-        case 'auth/user-not-found':
-        case 'auth/wrong-password':
-        case 'auth/invalid-credential':
-            return 'E-mail ou senha inválidos.';
-        case 'auth/weak-password':
-            return 'A senha deve ter pelo menos 6 caracteres.';
-        default:
-            return 'Ocorreu um erro. Por favor, tente novamente.';
+  const mapSupabaseError = (authError: AuthError): string => {
+    if (authError.message.includes("User already registered")) {
+        return 'Este e-mail já está registrado.';
     }
+    if (authError.message.includes("Invalid login credentials")) {
+        return 'E-mail ou senha inválidos.';
+    }
+    if (authError.message.includes("Password should be at least 6 characters")) {
+        return 'A senha deve ter pelo menos 6 caracteres.';
+    }
+    return 'Ocorreu um erro. Por favor, tente novamente.';
   }
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -78,20 +69,23 @@ const Auth: React.FC = () => {
     }
 
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, lowerCaseEmail, password);
-        const user = userCredential.user;
-
-        // Store additional user data in Firestore
-        await setDoc(doc(db, "users", user.uid), {
-            name: name,
+        const { error } = await supabase.auth.signUp({
             email: lowerCaseEmail,
-            createdAt: new Date().toISOString()
+            password: password,
+            options: {
+                data: { // This data is passed to the trigger on Supabase
+                    name: name,
+                    email: lowerCaseEmail
+                }
+            }
         });
+
+        if (error) throw error;
         
-        setSuccess("Conta criada com sucesso! Por favor, faça o login.");
+        setSuccess("Conta criada! Verifique seu e-mail para ativar sua conta antes de fazer o login.");
         switchMode('LOGIN');
     } catch (err) {
-        setError(mapFirebaseError(err as AuthError));
+        setError(mapSupabaseError(err as AuthError));
     } finally {
         setIsLoading(false);
     }
@@ -103,10 +97,14 @@ const Auth: React.FC = () => {
     setIsLoading(true);
     
     try {
-        await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
-        // onAuthStateChanged in App.tsx will handle the navigation
+        const { error } = await supabase.auth.signInWithPassword({
+            email: email.toLowerCase(),
+            password: password,
+        });
+        if (error) throw error;
+        // onAuthStateChange in App.tsx will handle the navigation
     } catch (err) {
-        setError(mapFirebaseError(err as AuthError));
+        setError(mapSupabaseError(err as AuthError));
     } finally {
         setIsLoading(false);
     }
@@ -117,10 +115,11 @@ const Auth: React.FC = () => {
     clearFormState();
     setIsLoading(true);
     try {
-        await sendPasswordResetEmail(auth, email);
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        if (error) throw error;
         setSuccess("Se uma conta existir para este e-mail, um link de redefinição foi enviado.");
     } catch (err) {
-        setError(mapFirebaseError(err as AuthError));
+        setError(mapSupabaseError(err as AuthError));
     } finally {
         setIsLoading(false);
     }

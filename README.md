@@ -6,7 +6,7 @@
 
 ## ✨ Funcionalidades Principais
 
-*   **Acesso Seguro e Restrito:** A plataforma é protegida por um sistema de login, garantindo que apenas usuários autorizados com e-mails `@betmgm.com.br` e `@artplan.com.br` possam acessar os dados.
+*   **Acesso Seguro e Restrito:** A plataforma é protegida por um sistema de login (via Supabase Auth), garantindo que apenas usuários autorizados com e-mails `@betmgm.com.br` e `@artplan.com.br` possam acessar os dados.
 *   **Agregação Inteligente de RSS:** Coleta notícias de mais de 50 fontes de notícias pré-configuradas, incluindo portais de iGaming, notícias de esportes, finanças e fontes governamentais.
 *   **Classificação com IA (Gemini):**
     *   **Filtragem Automática:** Descarta automaticamente artigos irrelevantes ou em idiomas estrangeiros.
@@ -26,6 +26,7 @@
 ## 🛠️ Tecnologias Utilizadas
 
 *   **Frontend:** React, TypeScript, Tailwind CSS
+*   **Backend & Auth:** Supabase
 *   **Inteligência Artificial:** Google Gemini API
     *   **`gemini-2.5-flash-lite`**: Usado para a classificação de artigos em alta velocidade e para os modos de chat "Flash" e "Grounded".
     *   **`gemini-2.5-pro`**: Usado para o modo de chat "Thinking", que exige raciocínio complexo.
@@ -39,36 +40,65 @@ A aplicação é projetada para ser executada diretamente no navegador sem a nec
 ### Pré-requisitos
 
 1.  **Chave de API do Google Gemini:** Você precisa de uma chave de API válida para o Google Gemini.
-2.  **Navegador Moderno:** Qualquer navegador atual como Chrome, Firefox, Safari ou Edge.
+2.  **Credenciais Supabase:** Você precisará da URL do projeto e da chave anônima (anon key) do seu projeto Supabase.
+3.  **Navegador Moderno:** Qualquer navegador atual como Chrome, Firefox, Safari ou Edge.
 
 ### Configuração e Acesso
 
-1.  **Chave de API:** A aplicação espera que a chave da API do Gemini esteja disponível como uma variável de ambiente chamada `process.env.API_KEY`. Em ambientes de desenvolvimento como o AI Studio, esta variável é injetada automaticamente.
+1.  **Chave de API Gemini:** A aplicação espera que a chave da API do Gemini esteja disponível como uma variável de ambiente chamada `process.env.API_KEY`. Em ambientes de desenvolvimento como o AI Studio, esta variável é injetada automaticamente.
+2.  **Configuração Supabase:** As credenciais do Supabase (URL e chave anônima) devem ser inseridas no arquivo `services/supabase.ts`.
 
-2.  **Acesso à Aplicação:**
+3.  **Acesso à Aplicação:**
     *   Ao abrir a aplicação, você será apresentado a uma página de login.
     *   **Para criar uma nova conta, você DEVE usar um endereço de e-mail dos domínios permitidos: `@artplan.com.br` ou `@betmgm.com.br`.**
-    *   Após criar a conta, utilize suas credenciais para fazer o login e acessar o painel de inteligência.
-
-3.  **Servidor Local (Opcional):** Embora você possa abrir o `index.html` diretamente, a melhor maneira de executar o projeto é através de um servidor local simples para evitar problemas com CORS (apesar de usarmos um proxy).
-    *   Se você tiver o Node.js instalado, pode usar o `serve`:
-        ```bash
-        npx serve .
-        ```
-    *   Acesse o endereço fornecido (geralmente `http://localhost:3000`).
+    *   Após o registro, você precisará confirmar seu endereço de e-mail clicando no link enviado para sua caixa de entrada.
+    *   Após a confirmação, utilize suas credenciais para fazer o login e acessar o painel de inteligência.
 
 ---
 
-## ⚙️ Arquitetura e Funcionamento
+## ⚙️ Configuração do Supabase (Opcional, para Dados de Usuário)
 
-1.  **`App.tsx`**: O componente principal que gerencia o estado de autenticação e atua como um roteador, exibindo a página de login ou o painel principal.
-2.  **`components/LandingPage.tsx` e `components/Auth.tsx`**: Compõem a tela de entrada, explicando o produto e gerenciando o processo de login/registro com restrição de domínio.
-3.  **`services/rssService.ts`**: Responsável por:
-    *   Buscar o conteúdo dos feeds RSS através de um proxy CORS.
-    *   Analisar o XML para extrair os dados brutos dos artigos.
-    *   Orquestrar o processo de classificação, enviando os artigos para o `geminiService` de forma **sequencial e com pausas** para respeitar os limites de taxa da API.
-4.  **`services/geminiService.ts`**: O cérebro da aplicação.
-    *   **Classificação:** Envia os artigos brutos para o modelo `gemini-2.5-flash-lite` com um *system prompt* detalhado que instrui a IA sobre as regras de filtragem, classificação e formatação da saída em JSON.
-    *   **Chatbot:** Gerencia a comunicação com a API Gemini para as funcionalidades do chat, selecionando o modelo apropriado para cada modo.
-5.  **`constants.ts`**: Armazena dados estáticos, como a lista inicial de feeds RSS (`INITIAL_FEEDS`) e a lista de concorrentes (`COMPETITOR_LIST`).
-6.  **`components/`**: Contém todos os componentes reutilizáveis da interface, como a lista de artigos, os controles de filtro e o chatbot.
+Para armazenar informações adicionais do usuário (como o nome completo), é recomendado criar uma tabela `users` no seu projeto Supabase e uma função para sincronizar novos usuários.
+
+**1. Crie a tabela `users`:**
+Execute o seguinte comando no Editor SQL do seu projeto Supabase.
+```sql
+-- Cria a tabela para armazenar os perfis dos usuários
+create table public.users (
+  id uuid not null references auth.users on delete cascade,
+  name text,
+  email text,
+  created_at timestamptz default now(),
+  primary key (id)
+);
+
+-- Habilita a segurança em nível de linha
+alter table public.users enable row level security;
+```
+
+**2. Crie uma Função e um Trigger:**
+Execute este SQL para criar uma função que insere automaticamente um novo perfil quando um novo usuário se inscreve.
+
+```sql
+-- Função para criar um perfil para um novo usuário
+create function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.users (id, name, email)
+  values (
+    new.id,
+    new.raw_user_meta_data->>'name',
+    new.email
+  );
+  return new;
+end;
+$$;
+
+-- Trigger para executar a função a cada novo usuário
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+```

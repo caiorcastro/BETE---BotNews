@@ -9,8 +9,7 @@ import ArticleList from './components/ArticleList';
 import ChatBot from './components/ChatBot';
 import ArticleControls from './components/ArticleControls';
 import LandingPage from './components/LandingPage';
-import { auth } from './services/firebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { supabase } from './services/supabase';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -32,16 +31,22 @@ export default function App() {
   const [nextRefresh, setNextRefresh] = useState<Date | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setIsAuthenticated(!!user);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
     });
-    return () => unsubscribe(); // Cleanup subscription on unmount
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleLogout = async () => {
     try {
-        await signOut(auth);
-        // The onAuthStateChanged listener will handle setting isAuthenticated to false
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        // The onAuthStateChange listener will handle setting isAuthenticated to false
         setArticles([]);
         setFilteredArticles([]);
     } catch (error) {
@@ -187,7 +192,7 @@ export default function App() {
   };
 
   if (isAuthenticated === null) {
-    // Render a loading state while Firebase is checking authentication
+    // Render a loading state while Supabase is checking authentication
     return (
         <div className="min-h-screen flex items-center justify-center bg-background-dark">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
