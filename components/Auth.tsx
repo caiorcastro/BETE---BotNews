@@ -129,8 +129,8 @@ const Auth: React.FC = () => {
     switch (mode) {
       case 'REGISTER':
         return (
-          <form onSubmit={handleRegister} className="space-y-4">
-            <h3 className="text-xl font-bold text-center text-white">Criar Conta</h3>
+          <form onSubmit={handleRegister} className="space-y-5">
+            <h3 className="text-2xl font-bold text-center text-white mb-1">Criar Conta</h3>
             <div>
               <input type="text" placeholder="Nome Completo" required value={name} onChange={e => setName(e.target.value)} className="input-field" />
             </div>
@@ -153,8 +153,8 @@ const Auth: React.FC = () => {
         );
       case 'RESET':
         return (
-          <form onSubmit={handleReset} className="space-y-4">
-            <h3 className="text-xl font-bold text-center text-white">Redefinir Senha</h3>
+          <form onSubmit={handleReset} className="space-y-5">
+            <h3 className="text-2xl font-bold text-center text-white mb-1">Redefinir Senha</h3>
             <p className="text-sm text-center text-gray-400">Digite seu e-mail e enviaremos um link para redefinir sua senha.</p>
             <div>
               <input type="email" placeholder="Seu E-mail" required value={email} onChange={e => setEmail(e.target.value)} className="input-field" />
@@ -170,8 +170,8 @@ const Auth: React.FC = () => {
       case 'LOGIN':
       default:
         return (
-          <form onSubmit={handleLogin} className="space-y-4">
-            <h3 className="text-xl font-bold text-center text-white">Acessar Painel</h3>
+          <form onSubmit={handleLogin} className="space-y-5">
+            <h3 className="text-2xl font-bold text-center text-white">Acessar Painel</h3>
             <div>
               <input type="email" placeholder="E-mail" required value={email} onChange={e => setEmail(e.target.value)} className="input-field" />
             </div>
@@ -199,13 +199,15 @@ const Auth: React.FC = () => {
           width: 100%;
           background-color: #121212;
           color: white;
-          placeholder-color: #6b7280;
           border: 1px solid #4a4a4a;
           border-radius: 0.375rem;
-          padding: 0.75rem 1rem;
-          font-size: 0.875rem;
+          padding: 0.875rem 1rem;
+          font-size: 1rem;
           outline: none;
           transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-field::placeholder {
+          color: #6b7280;
         }
         .input-field:focus {
           border-color: #C19A6B;
@@ -215,9 +217,12 @@ const Auth: React.FC = () => {
           background-color: #C19A6B;
           color: black;
           font-weight: bold;
-          padding: 0.75rem 1rem;
+          padding: 0.875rem 1rem;
           border-radius: 0.375rem;
           transition: opacity 0.2s;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          font-size: 0.875rem;
         }
         .button-primary:hover {
           opacity: 0.9;

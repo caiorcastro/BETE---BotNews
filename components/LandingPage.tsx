@@ -3,12 +3,10 @@ import React from 'react';
 import Auth from './Auth';
 
 const FeatureCard: React.FC<{ icon: string; title: string; children: React.ReactNode }> = ({ icon, title, children }) => (
-    <div className="bg-card-dark p-6 rounded-lg border border-gray-800">
-        <div className="flex items-center gap-4 mb-3">
-            <span className="material-icons text-primary text-3xl">{icon}</span>
-            <h3 className="font-display text-xl font-bold text-white">{title}</h3>
-        </div>
-        <p className="text-gray-400">{children}</p>
+    <div className="bg-card-dark p-6 rounded-lg border border-gray-800 transition-all duration-300 hover:border-primary/50 hover:-translate-y-1">
+        <span className="material-icons text-primary text-5xl mb-4 inline-block">{icon}</span>
+        <h3 className="font-display text-xl font-bold text-white mb-2">{title}</h3>
+        <p className="text-gray-400 leading-relaxed">{children}</p>
     </div>
 );
 
@@ -32,22 +30,24 @@ const LandingPage: React.FC = () => {
       
       <main>
         {/* Hero Section */}
-        <section className="relative py-20 sm:py-24 lg:py-28 px-4 overflow-hidden">
+        <section className="relative py-20 sm:py-24 lg:py-32 px-4 overflow-hidden">
              <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background-dark"></div>
             <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="grid lg:grid-cols-2 gap-12 items-center">
-                    <div className="text-center lg:text-left">
-                         <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-extrabold text-white leading-tight">
-                            Inteligência de Mercado para <span className="text-primary">iGaming & Sportsbook</span>.
-                            <br />
-                            Análise estratégica para a BetMGM.
+                <div className="grid lg:grid-cols-5 gap-16 items-center">
+                    <div className="lg:col-span-3 text-center lg:text-left">
+                         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-extrabold text-white leading-tight tracking-tighter">
+                            <span className="block">Inteligência de Mercado para</span>
+                            <span className="text-primary">iGaming & Sportsbook.</span>
                         </h1>
-                        <p className="mt-6 text-base text-gray-300 max-w-xl mx-auto lg:mx-0">
+                        <h2 className="mt-4 text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-gray-300">
+                            Análise estratégica para a BetMGM.
+                        </h2>
+                        <p className="mt-8 text-lg text-gray-400 max-w-2xl mx-auto lg:mx-0">
                             BETE é sua analista de IA dedicada, rastreando notícias, concorrentes e a regulamentação do mercado de apostas no Brasil para transformar dados em decisões estratégicas.
                         </p>
                     </div>
-                    <div className="max-w-md mx-auto lg:mx-0 lg:justify-self-end">
+                    <div className="lg:col-span-2 max-w-md mx-auto lg:mx-0 w-full lg:justify-self-end">
                         <Auth />
                     </div>
                 </div>
@@ -57,9 +57,9 @@ const LandingPage: React.FC = () => {
         {/* Features Section */}
         <section className="py-16 sm:py-20 lg:py-24 bg-[#0a0a0a]">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="text-center mb-12">
-                    <h2 className="text-3xl sm:text-4xl font-display font-bold text-white">Uma Plataforma, Vantagem Completa</h2>
-                    <p className="mt-4 text-gray-400 max-w-2xl mx-auto">
+                <div className="text-center mb-16">
+                    <h2 className="text-4xl sm:text-5xl font-display font-bold text-white tracking-tight">Uma Plataforma, Vantagem Completa</h2>
+                    <p className="mt-4 text-lg text-gray-400 max-w-3xl mx-auto">
                         Ferramentas projetadas para fornecer a inteligência que você precisa para se manter à frente.
                     </p>
                 </div>
