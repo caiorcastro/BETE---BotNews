@@ -14,7 +14,6 @@ interface ArticleControlsProps {
     setSelectedRelevance: (relevance: string[]) => void;
     filterByCompetitors: boolean;
     setFilterByCompetitors: (filter: boolean) => void;
-    onSearch: () => void; // New prop
 }
 
 const ArticleControls: React.FC<ArticleControlsProps> = ({
@@ -29,8 +28,7 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
     selectedRelevance,
     setSelectedRelevance,
     filterByCompetitors,
-    setFilterByCompetitors,
-    onSearch // New prop
+    setFilterByCompetitors
 }) => {
 
     const handleExport = () => {
@@ -47,6 +45,7 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
                 new Date(article.date).toLocaleString('pt-BR'),
                 article.link,
                 article.relevance,
+                `"${article.reason.replace(/"/g, '""')}"`,
                 `"${article.competitors?.join(', ') || ''}"`
             ].join(',')
         );
@@ -73,24 +72,16 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
 
     const setDateRange = (days: number) => {
         const toYYYYMMDD = (date: Date) => {
-            const yyyy = date.getFullYear();
-            const mm = String(date.getMonth() + 1).padStart(2, '0');
-            const dd = String(date.getDate()).padStart(2, '0');
-            return `${yyyy}-${mm}-${dd}`;
+            return date.toISOString().split('T')[0];
         };
-
-        const end = new Date();
-        const start = new Date();
-
-        if (days === 1) { // Special case for "D-1" to mean only yesterday
-            start.setDate(end.getDate() - 1);
-            setEndDate(toYYYYMMDD(start));
-            setStartDate(toYYYYMMDD(start));
-            return;
-        }
-        
-        start.setDate(end.getDate() - days);
-        setEndDate(toYYYYMMDD(end));
+    
+        const today = new Date();
+        today.setHours(23, 59, 59, 999); // Set to the end of the current day
+        setEndDate(toYYYYMMDD(today));
+    
+        const start = new Date(today);
+        start.setDate(start.getDate() - days);
+        start.setHours(0, 0, 0, 0); // Set to the beginning of the start day
         setStartDate(toYYYYMMDD(start));
     };
 
@@ -141,7 +132,6 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
                 <div className="flex items-center gap-2 ml-auto">
                     <ActionButton onClick={onRefresh} icon="refresh">Atualizar Fontes</ActionButton>
                     <ActionButton onClick={handleExport} icon="download">Exportar CSV</ActionButton>
-                    <ActionButton onClick={onSearch} icon="search">Buscar</ActionButton>
                 </div>
             </div>
             

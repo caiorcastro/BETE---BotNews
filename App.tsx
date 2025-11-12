@@ -1,14 +1,13 @@
 
+import React, { useState, useEffect, useCallback } from 'react';
 import { Feed, Article } from './types';
-import { INITIAL_FEEDS, COMPETITOR_LIST } from './constants';
+import { INITIAL_FEEDS } from './constants';
 import { fetchArticles as fetchLiveArticles } from './services/rssService';
 import Header from './components/Header';
 import FeedManager from './components/FeedManager';
 import ArticleList from './components/ArticleList';
 import ChatBot from './components/ChatBot';
 import ArticleControls from './components/ArticleControls';
-
-import ReportGenerator from './components/ReportGenerator';
 
 export default function App() {
   const [feeds, setFeeds] = useState<Feed[]>(INITIAL_FEEDS);
@@ -19,7 +18,6 @@ export default function App() {
   const [isChatBotOpen, setIsChatBotOpen] = useState<boolean>(false);
   const [initialChatPrompt, setInitialChatPrompt] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<'articles' | 'reports'>('articles');
 
   // State for controls
   const [searchTerm, setSearchTerm] = useState('');
@@ -28,31 +26,43 @@ export default function App() {
   const [selectedRelevance, setSelectedRelevance] = useState<string[]>([]);
   const [filterByCompetitors, setFilterByCompetitors] = useState<boolean>(false);
   const [feedCounts, setFeedCounts] = useState<Record<string, number>>({});
-  const [triggerSearch, setTriggerSearch] = useState(0); // New state to trigger manual search
 
 
   const fetchArticles = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setArticles([]); // Reset articles for progressive loading
+    setFeedCounts({}); // Reset counts to zero for all feeds
+    
+    // Initialize counts to 0
+    const initialCounts: Record<string, number> = {};
+    feeds.forEach(feed => {
+        initialCounts[feed.name] = 0;
+    });
+    setFeedCounts(initialCounts);
+
+    const handleNewArticles = (newlyClassifiedArticles: Article[]) => {
+        if (newlyClassifiedArticles.length > 0) {
+            // Update articles state
+            setArticles(prevArticles => {
+                const updated = [...prevArticles, ...newlyClassifiedArticles];
+                updated.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                return updated;
+            });
+
+            // Update counts incrementally
+            setFeedCounts(prevCounts => {
+                const newCounts = { ...prevCounts };
+                newlyClassifiedArticles.forEach(article => {
+                    newCounts[article.source] = (newCounts[article.source] || 0) + 1;
+                });
+                return newCounts;
+            });
+        }
+    };
+
     try {
-        const fetchedArticles = await fetchLiveArticles(feeds);
-        // Sort by date descending
-        fetchedArticles.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setArticles(fetchedArticles);
-
-        // Calculate counts for each feed
-        const counts: Record<string, number> = {};
-        feeds.forEach(feed => {
-            counts[feed.name] = 0;
-        });
-        fetchedArticles.forEach(article => {
-            if (counts[article.source] !== undefined) {
-                counts[article.source]++;
-            }
-        });
-        setFeedCounts(counts);
-        setTriggerSearch(prev => prev + 1); // Trigger initial filter after fetching articles
-
+        await fetchLiveArticles(feeds, handleNewArticles);
     } catch (err) {
         console.error("Error fetching articles:", err);
         if (err instanceof Error) {
@@ -63,7 +73,7 @@ export default function App() {
     } finally {
         setIsLoading(false);
     }
-  }, [feeds]);
+}, [feeds]);
 
   useEffect(() => {
     fetchArticles();
@@ -101,18 +111,19 @@ export default function App() {
     
     // 4. Filter by relevance
     if (selectedRelevance.length > 0) {
-        currentArticles = currentArticles.filter(article => selectedRelevance.includes(article.relevance));
+        // Trim relevance from article data to ensure clean matching against the filter
+        currentArticles = currentArticles.filter(article => 
+            article.relevance && selectedRelevance.includes(article.relevance.trim())
+        );
     }
 
     // 5. Filter by competitors
     if (filterByCompetitors) {
-        currentArticles = currentArticles.filter(article => 
-            article.competitors && article.competitors.some(c => COMPETITOR_LIST.includes(c))
-        );
+        currentArticles = currentArticles.filter(article => article.competitors && article.competitors.length > 0);
     }
 
     setFilteredArticles(currentArticles);
-  }, [triggerSearch, articles]); // Only re-run when search is triggered or raw articles change
+  }, [selectedFeed, articles, searchTerm, startDate, endDate, selectedRelevance, filterByCompetitors]);
 
   const addFeed = (name: string, url: string) => {
     if (name && url && !feeds.some(feed => feed.url === url)) {
@@ -124,10 +135,6 @@ export default function App() {
   const handleAnalyzeArticle = (article: Article) => {
     setInitialChatPrompt(`Por favor, forneça um resumo conciso e uma análise do seguinte artigo para um executivo:\n\nTítulo: "${article.title}"\nDescrição: "${article.description}"`);
     setIsChatBotOpen(true);
-  };
-
-  const handleSearch = () => {
-    setTriggerSearch(prev => prev + 1);
   };
 
   return (
@@ -145,41 +152,35 @@ export default function App() {
             />
           </aside>
           <section className="flex-1">
-            <div className="mb-4 border-b border-gray-700">
-                <nav className="flex space-x-4">
-                    <button onClick={() => setView('articles')} className={`py-2 px-4 text-sm font-medium ${view === 'articles' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400 hover:text-white'}`}>
-                        Visualização de Artigos
-                    </button>
-                    <button onClick={() => setView('reports')} className={`py-2 px-4 text-sm font-medium ${view === 'reports' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400 hover:text-white'}`}>
-                        Gerador de Relatórios
-                    </button>
-                </nav>
-            </div>
-
-            {view === 'articles' ? (
-              <>
-                <ArticleControls
-                    searchTerm={searchTerm}
-                    setSearchTerm={setSearchTerm}
-                    startDate={startDate}
-                    setStartDate={setStartDate}
-                    endDate={endDate}
-                    setEndDate={setEndDate}
-                    onRefresh={fetchArticles}
-                    filteredArticles={filteredArticles}
-                    selectedRelevance={selectedRelevance}
-                    setSelectedRelevance={setSelectedRelevance}
-                    filterByCompetitors={filterByCompetitors}
-                    setFilterByCompetitors={setFilterByCompetitors}
-                    onSearch={handleSearch} // New prop
-                />
-                <ArticleList
-                  articles={filteredArticles}
-                  isLoading={isLoading}
-                  onAnalyzeArticle={handleAnalyzeArticle}
-                  error={error}
-                />
-              </>
-            ) : (
-              <ReportGenerator articles={articles} />
-            )}
+            <ArticleControls
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                startDate={startDate}
+                setStartDate={setStartDate}
+                endDate={endDate}
+                setEndDate={setEndDate}
+                onRefresh={fetchArticles}
+                filteredArticles={filteredArticles}
+                selectedRelevance={selectedRelevance}
+                setSelectedRelevance={setSelectedRelevance}
+                filterByCompetitors={filterByCompetitors}
+                setFilterByCompetitors={setFilterByCompetitors}
+            />
+            <ArticleList
+              articles={filteredArticles}
+              isLoading={isLoading}
+              onAnalyzeArticle={handleAnalyzeArticle}
+              error={error}
+            />
+          </section>
+        </div>
+      </main>
+      <ChatBot 
+        isOpen={isChatBotOpen} 
+        setIsOpen={setIsChatBotOpen} 
+        initialPrompt={initialChatPrompt}
+        setInitialPrompt={setInitialChatPrompt}
+      />
+    </div>
+  );
+}

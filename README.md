@@ -1,20 +1,73 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# BETE - A Caçadora de Notícias
 
-# Run and deploy your AI Studio app
+**BETE (BETMGM Feed Intelligence)** é um agregador de notícias inteligente projetado para fornecer insights cruciais sobre o mercado de iGaming e apostas esportivas no Brasil. A aplicação utiliza o poder da API do Google Gemini para analisar, classificar e resumir artigos de dezenas de fontes de notícias em tempo real, transformando um mar de informações em inteligência acionável.
 
-This contains everything you need to run your app locally.
+ <!-- Placeholder for a real screenshot -->
 
-View your app in AI Studio: https://ai.studio/apps/drive/1DJeTRrcD945qJCilK6Gm_gPchNn2B5Zl
+---
 
-## Run Locally
+## ✨ Funcionalidades Principais
 
-**Prerequisites:**  Node.js
+*   **Agregação Inteligente de RSS:** Coleta notícias de mais de 50 fontes de notícias pré-configuradas, incluindo portais de iGaming, notícias de esportes, finanças e fontes governamentais.
+*   **Classificação com IA (Gemini):**
+    *   **Filtragem Automática:** Descarta automaticamente artigos irrelevantes ou em idiomas estrangeiros.
+    *   **Análise de Relevância:** Classifica cada notícia como `High`, `Medium` ou `Low` com base em critérios de negócios pré-definidos.
+    *   **Rastreamento de Concorrentes:** Identifica e marca menções dos principais concorrentes do mercado.
+*   **Painel de Controle Avançado:**
+    *   **Filtros Dinâmicos:** Filtre notícias por fonte, período, nível de relevância, palavras-chave e menções a concorrentes.
+    *   **Carregamento Progressivo:** Veja os resultados aparecerem em tempo real à medida que a IA processa as fontes, uma a uma.
+    *   **Exportação para CSV:** Exporte facilmente a lista de notícias filtrada para análise offline.
+*   **Chatbot Integrado com Gemini:**
+    *   **Análise de Artigos:** Peça resumos e análises aprofundadas de qualquer notícia com um único clique.
+    *   **Múltiplos Modos de IA:** Alterne entre modos para obter respostas rápidas (`Flash`), respostas baseadas em buscas na web (`Grounded`) ou raciocínio complexo (`Thinking`).
+*   **Interface Responsiva:** O design limpo e moderno se adapta perfeitamente a desktops, tablets e dispositivos móveis.
 
+---
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 🛠️ Tecnologias Utilizadas
+
+*   **Frontend:** React, TypeScript, Tailwind CSS
+*   **Inteligência Artificial:** Google Gemini API
+    *   **`gemini-2.5-flash-lite`**: Usado para a classificação de artigos em alta velocidade e para os modos de chat "Flash" e "Grounded".
+    *   **`gemini-2.5-pro`**: Usado para o modo de chat "Thinking", que exige raciocínio complexo.
+
+---
+
+## 🚀 Como Executar o Projeto
+
+A aplicação é projetada para ser executada diretamente no navegador sem a necessidade de um processo de build complexo.
+
+### Pré-requisitos
+
+1.  **Chave de API do Google Gemini:** Você precisa de uma chave de API válida para o Google Gemini.
+2.  **Navegador Moderno:** Qualquer navegador atual como Chrome, Firefox, Safari ou Edge.
+
+### Configuração
+
+1.  **Chave de API:** A aplicação espera que a chave da API do Gemini esteja disponível como uma variável de ambiente chamada `process.env.API_KEY`. Em ambientes de desenvolvimento como o AI Studio, esta variável é injetada automaticamente.
+
+2.  **Servidor Local (Opcional):** Embora você possa abrir o `index.html` diretamente, a melhor maneira de executar o projeto é através de um servidor local simples para evitar problemas com CORS (apesar de usarmos um proxy).
+    *   Se você tiver o Node.js instalado, pode usar o `serve`:
+        ```bash
+        npx serve .
+        ```
+    *   Se você tiver o Python instalado:
+        ```bash
+        python -m http.server
+        ```
+    *   Acesse o endereço fornecido (geralmente `http://localhost:3000` ou `http://localhost:8000`).
+
+---
+
+## ⚙️ Arquitetura e Funcionamento
+
+1.  **`App.tsx`**: O componente principal que gerencia o estado geral da aplicação, incluindo a lista de artigos, filtros e a lógica de busca.
+2.  **`services/rssService.ts`**: Responsável por:
+    *   Buscar o conteúdo dos feeds RSS através de um proxy CORS.
+    *   Analisar o XML para extrair os dados brutos dos artigos.
+    *   Orquestrar o processo de classificação, enviando os artigos para o `geminiService` de forma **sequencial e com pausas** para respeitar os limites de taxa da API.
+3.  **`services/geminiService.ts`**: O cérebro da aplicação.
+    *   **Classificação:** Envia os artigos brutos para o modelo `gemini-2.5-flash-lite` com um *system prompt* detalhado que instrui a IA sobre as regras de filtragem, classificação e formatação da saída em JSON.
+    *   **Chatbot:** Gerencia a comunicação com a API Gemini para as funcionalidades do chat, selecionando o modelo apropriado para cada modo.
+4.  **`constants.ts`**: Armazena dados estáticos, como a lista inicial de feeds RSS (`INITIAL_FEEDS`) e a lista de concorrentes (`COMPETITOR_LIST`).
+5.  **`components/`**: Contém todos os componentes reutilizáveis da interface, como a lista de artigos, os controles de filtro e o chatbot.

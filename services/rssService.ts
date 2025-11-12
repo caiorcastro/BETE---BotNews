@@ -1,3 +1,4 @@
+
 import { Feed, Article } from '../types';
 import { classifyAndFilterArticles } from './geminiService';
 
@@ -11,7 +12,15 @@ const parseRSS = (xmlString: string, feedName: string): Omit<Article, 'relevance
     const parseError = doc.querySelector('parsererror');
     if (parseError) {
         console.error(`Error parsing XML for feed ${feedName}:`, parseError.textContent);
-        return [];
+        // Attempt to clean up common issues, like unescaped ampersands
+        const cleanedXmlString = xmlString.replace(/&(?!(amp|lt|gt|quot|apos);)/g, '&amp;');
+        const cleanedDoc = parser.parseFromString(cleanedXmlString, 'application/xml');
+        const newParseError = cleanedDoc.querySelector('parsererror');
+        if (newParseError) {
+            console.error(`Still failed to parse XML for ${feedName} after cleaning.`);
+            return [];
+        }
+        doc.documentElement.innerHTML = cleanedDoc.documentElement.innerHTML; // a bit of a hack
     }
     
     const items = doc.querySelectorAll('item, entry');
@@ -61,7 +70,19 @@ export const fetchAndParseRss = async (feed: Feed): Promise<Omit<Article, 'relev
         if (!response.ok) {
             throw new Error(`Failed to fetch feed ${feed.name}: ${response.status} ${response.statusText}`);
         }
-        const xmlString = await response.text();
+        
+        const contentType = response.headers.get('content-type') || '';
+        let xmlString: string;
+
+        // The Folha feed uses 'iso-8859-1' encoding, which needs special handling.
+        if (contentType.toLowerCase().includes('iso-8859-1')) {
+            const buffer = await response.arrayBuffer();
+            const decoder = new TextDecoder('iso-8859-1');
+            xmlString = decoder.decode(buffer);
+        } else {
+            xmlString = await response.text();
+        }
+
         return parseRSS(xmlString, feed.name);
     } catch (error) {
         console.error(`Error processing feed ${feed.name}:`, error);
@@ -69,46 +90,51 @@ export const fetchAndParseRss = async (feed: Feed): Promise<Omit<Article, 'relev
     }
 };
 
-export const fetchArticles = async (feeds: Feed[]): Promise<Article[]> => {
-    console.log("Fetching and classifying articles from feeds in parallel...");
+export const fetchArticles = async (
+    feeds: Feed[],
+    onArticlesClassified: (articles: Article[]) => void
+): Promise<void> => {
+    console.log("Fetching and classifying articles from feeds sequentially...");
 
-    const classificationPromises = feeds.map(async (feed) => {
-        const rawArticles = await fetchAndParseRss(feed);
-        if (rawArticles.length === 0) {
-            return [];
-        }
-        console.log(`-> Found ${rawArticles.length} raw articles from ${feed.name}. Classifying...`);
-        return classifyAndFilterArticles(rawArticles);
-    });
+    let totalSuccesses = 0;
+    const errors: string[] = [];
+    const DELAY_BETWEEN_FEEDS_MS = 1100; // ~55 RPM to stay safely under typical API limits
 
-    const results = await Promise.allSettled(classificationPromises);
-
-    const allClassifiedArticles: Article[] = [];
-    let hasFailures = false;
-    let firstReason: unknown = null;
-
-    results.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-            allClassifiedArticles.push(...result.value);
-        } else {
-            hasFailures = true;
-            if (firstReason === null) {
-                firstReason = result.reason;
+    for (const feed of feeds) {
+        try {
+            const rawArticles = await fetchAndParseRss(feed);
+            if (rawArticles.length === 0) {
+                continue; // Skip if no articles found, not an error
             }
-            console.error(`Error classifying articles for feed ${feeds[index].name}:`, result.reason);
-        }
-    });
+            console.log(`-> Found ${rawArticles.length} raw articles from ${feed.name}. Classifying...`);
+            const classifiedArticles = await classifyAndFilterArticles(rawArticles);
 
-    // If all feeds failed processing, throw a more informative error to be caught by the UI component.
-    if (allClassifiedArticles.length === 0 && hasFailures) {
-        const errorMessage = firstReason instanceof Error ? firstReason.message : String(firstReason);
-         if (errorMessage.includes("API key not valid")) {
-             throw new Error("A chave da API Gemini não é válida ou está faltando. Verifique a configuração.");
+            if (classifiedArticles.length > 0) {
+                onArticlesClassified(classifiedArticles);
+            }
+            totalSuccesses++;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`Error processing feed ${feed.name}:`, error);
+            errors.push(`Failed on ${feed.name}: ${errorMessage}`);
+            // If the error is a rate limit, wait a bit before continuing
+            if (errorMessage.includes("429")) {
+                console.warn("Rate limit hit. Waiting for 10 seconds before continuing.");
+                await new Promise(resolve => setTimeout(resolve, 10000));
+            }
+        } finally {
+            // Add a delay after processing each feed to avoid hitting API rate limits.
+            await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_FEEDS_MS));
         }
-        throw new Error(`Falha ao processar todas as fontes. O primeiro erro foi: ${errorMessage}`);
     }
 
+    if (totalSuccesses === 0 && errors.length > 0) {
+        const firstError = errors[0];
+        if (firstError.includes("API key not valid")) {
+            throw new Error("A chave da API Gemini não é válida ou está faltando. Verifique a configuração.");
+        }
+        throw new Error(`Falha ao processar todas as fontes. O primeiro erro foi: ${firstError}`);
+    }
 
-    console.log(`Finished classification. Total relevant articles: ${allClassifiedArticles.length}`);
-    return allClassifiedArticles;
+    console.log(`Finished processing all feeds.`);
 };
