@@ -15,7 +15,6 @@ interface ArticleControlsProps {
     setSelectedRelevance: (relevance: string[]) => void;
     filterByCompetitors: boolean;
     setFilterByCompetitors: (filter: boolean) => void;
-    nextRefresh: Date | null;
 }
 
 const ArticleControls: React.FC<ArticleControlsProps> = ({
@@ -31,7 +30,6 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
     setSelectedRelevance,
     filterByCompetitors,
     setFilterByCompetitors,
-    nextRefresh
 }) => {
 
     const handleExport = () => {
@@ -40,6 +38,10 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
             return;
         }
         const headers = ["Title", "Description", "Source", "Date", "Link", "Relevance", "Reason", "Competitors"];
+        
+        // Add BOM for better Excel compatibility with UTF-8 characters (like accents)
+        const BOM = '\uFEFF';
+
         const rows = filteredArticles.map(article => 
             [
                 `"${article.title.replace(/"/g, '""')}"`,
@@ -52,14 +54,21 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
                 `"${article.competitors?.join(', ') || ''}"`
             ].join(',')
         );
-        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\r\n');
-        const encodedUri = encodeURI(csvContent);
+        
+        const csvString = [headers.join(','), ...rows].join('\r\n');
+        
+        const blob = new Blob([BOM + csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        
         const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
+        link.setAttribute("href", url);
         link.setAttribute("download", `bete_news_export_${new Date().toISOString().split('T')[0]}.csv`);
+        
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        URL.revokeObjectURL(url);
     };
 
     const handleRelevanceToggle = (relevance: string) => {
@@ -133,15 +142,6 @@ const ArticleControls: React.FC<ArticleControlsProps> = ({
                     <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
                 </div>
                 <div className="flex items-center gap-4 ml-auto">
-                    <div className="text-xs text-gray-400 text-center hidden sm:block">
-                        {nextRefresh && (
-                            <>
-                                <span>Próxima atualização:</span>
-                                <br/>
-                                <span className="font-semibold">{nextRefresh.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                            </>
-                        )}
-                    </div>
                     <ActionButton onClick={onRefresh} icon="refresh">Atualizar Fontes</ActionButton>
                     <ActionButton onClick={handleExport} icon="download">Exportar CSV</ActionButton>
                 </div>

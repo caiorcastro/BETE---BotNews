@@ -7,98 +7,82 @@
 ## ✨ Funcionalidades Principais
 
 *   **Acesso Seguro e Restrito:** A plataforma é protegida por um sistema de login (via Supabase Auth), garantindo que apenas usuários autorizados com e-mails `@betmgm.com.br` e `@artplan.com.br` possam acessar os dados.
-*   **Agregação Inteligente de RSS:** Coleta notícias de mais de 50 fontes de notícias pré-configuradas, incluindo portais de iGaming, notícias de esportes, finanças e fontes governamentais.
+*   **Busca em Tempo Real:** Ao logar ou clicar em "Atualizar Fontes", a aplicação busca, processa e classifica as notícias mais recentes diretamente no seu navegador. Os dados são sempre ao vivo, garantindo que você tenha as informações mais atuais.
 *   **Classificação com IA (Gemini):**
-    *   **Filtragem Automática:** Descarta automaticamente artigos irrelevantes ou em idiomas estrangeiros.
-    *   **Análise de Relevância:** Classifica cada notícia como `High`, `Medium` ou `Low` com base em critérios de negócios pré-definidos.
+    *   **Análise de Relevância:** Classifica cada notícia como `High`, `Medium` ou `Low`.
     *   **Rastreamento de Concorrentes:** Identifica e marca menções dos principais concorrentes do mercado.
 *   **Painel de Controle Avançado:**
-    *   **Filtros Dinâmicos:** Filtre notícias por fonte, período, nível de relevância, palavras-chave e menções a concorrentes.
-    *   **Carregamento Progressivo:** Veja os resultados aparecerem em tempo real à medida que a IA processa as fontes, uma a uma.
+    *   **Filtros Dinâmicos:** Filtre notícias por fonte, período, relevância, palavras-chave e concorrentes.
     *   **Exportação para CSV:** Exporte facilmente a lista de notícias filtrada para análise offline.
 *   **Chatbot Integrado com Gemini:**
-    *   **Análise de Artigos:** Peça resumos e análises aprofundadas de qualquer notícia com um único clique.
-    *   **Múltiplos Modos de IA:** Alterne entre modos para obter respostas rápidas (`Flash`), respostas baseadas em buscas na web (`Grounded`) ou raciocínio complexo (`Thinking`).
-*   **Interface Responsiva:** O design limpo e moderno se adapta perfeitamente a desktops, tablets e dispositivos móveis.
+    *   **Análise de Artigos:** Peça resumos e análises aprofundadas de qualquer notícia.
+    *   **Múltiplos Modos de IA:** Alterne entre modos para respostas rápidas (`Flash`), baseadas em buscas na web (`Grounded`) ou com raciocínio complexo (`Thinking`).
 
 ---
 
 ## 🛠️ Tecnologias Utilizadas
 
 *   **Frontend:** React, TypeScript, Tailwind CSS
-*   **Backend & Auth:** Supabase
+*   **Backend & Auth:** Supabase (Auth, Database for user profiles)
 *   **Inteligência Artificial:** Google Gemini API
-    *   **`gemini-2.5-flash-lite`**: Usado para a classificação de artigos em alta velocidade e para os modos de chat "Flash" e "Grounded".
-    *   **`gemini-2.5-pro`**: Usado para o modo de chat "Thinking", que exige raciocínio complexo.
+    *   **`gemini-2.5-flash`**: Usado para a classificação de artigos e para os modos de chat "Flash" e "Grounded".
+    *   **`gemini-2.5-pro`**: Usado para o modo de chat "Thinking".
 
 ---
 
 ## 🚀 Como Executar o Projeto
 
-A aplicação é projetada para ser executada diretamente no navegador sem a necessidade de um processo de build complexo.
+A aplicação é executada 100% no navegador, mas requer uma configuração no Supabase para gerenciar os usuários. **As notícias não são salvas no banco de dados.**
 
 ### Pré-requisitos
 
-1.  **Chave de API do Google Gemini:** Você precisa de uma chave de API válida para o Google Gemini.
-2.  **Credenciais Supabase:** Você precisará da URL do projeto e da chave anônima (anon key) do seu projeto Supabase.
-3.  **Navegador Moderno:** Qualquer navegador atual como Chrome, Firefox, Safari ou Edge.
+1.  **Chave de API do Google Gemini:** Você precisa de uma chave de API válida.
+2.  **Conta no Supabase:** Você precisará de um projeto Supabase configurado.
 
-### Configuração e Acesso
+### 1. Configuração do Frontend
 
-1.  **Chave de API Gemini:** A aplicação espera que a chave da API do Gemini esteja disponível como uma variável de ambiente chamada `process.env.API_KEY`. Em ambientes de desenvolvimento como o AI Studio, esta variável é injetada automaticamente.
-2.  **Configuração Supabase:** As credenciais do Supabase (URL e chave anônima) devem ser inseridas no arquivo `services/supabase.ts`.
+1.  **Chave de API Gemini:** A aplicação espera que a chave da API esteja disponível como uma variável de ambiente `process.env.API_KEY`. Em ambientes como o AI Studio, esta variável é injetada automaticamente.
+2.  **Credenciais Supabase:** As credenciais do seu projeto Supabase (URL e chave anônima) já estão configuradas em `services/supabase.ts`.
 
-3.  **Acesso à Aplicação:**
-    *   Ao abrir a aplicação, você será apresentado a uma página de login.
-    *   **Para criar uma nova conta, você DEVE usar um endereço de e-mail dos domínios permitidos: `@artplan.com.br` ou `@betmgm.com.br`.**
-    *   Após o registro, você precisará confirmar seu endereço de e-mail clicando no link enviado para sua caixa de entrada.
-    *   Após a confirmação, utilize suas credenciais para fazer o login e acessar o painel de inteligência.
+### 2. Configuração do Banco de Dados Supabase (Obrigatório)
 
----
+Siga os passos abaixo no seu painel do Supabase. Vá para o **SQL Editor** e execute o script a seguir. Este script cria a tabela `profiles` para armazenar informações dos usuários (como o nome) e um `trigger` que a preenche automaticamente sempre que um novo usuário se cadastra.
 
-## ⚙️ Configuração do Supabase (Opcional, para Dados de Usuário)
-
-Para armazenar informações adicionais do usuário (como o nome completo), é recomendado criar uma tabela `users` no seu projeto Supabase e uma função para sincronizar novos usuários.
-
-**1. Crie a tabela `users`:**
-Execute o seguinte comando no Editor SQL do seu projeto Supabase.
 ```sql
--- Cria a tabela para armazenar os perfis dos usuários
-create table public.users (
-  id uuid not null references auth.users on delete cascade,
-  name text,
-  email text,
-  created_at timestamptz default now(),
-  primary key (id)
+-- Cria a tabela para os perfis públicos dos usuários
+CREATE TABLE public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT,
+  email TEXT
 );
 
--- Habilita a segurança em nível de linha
-alter table public.users enable row level security;
+-- Habilita a segurança em nível de linha (RLS)
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Define as políticas de acesso para a tabela de perfis
+CREATE POLICY "Public profiles are viewable by everyone." ON public.profiles
+  FOR SELECT USING (true);
+
+CREATE POLICY "Users can insert their own profile." ON public.profiles
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can update own profile." ON public.profiles
+  FOR UPDATE USING (auth.uid() = id);
+
+-- Este trigger cria automaticamente um perfil quando um novo usuário se cadastra
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, name, email)
+  VALUES (new.id, new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'email');
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Associa o trigger ao evento de criação de usuário no Supabase Auth
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 ```
 
-**2. Crie uma Função e um Trigger:**
-Execute este SQL para criar uma função que insere automaticamente um novo perfil quando um novo usuário se inscreve.
-
-```sql
--- Função para criar um perfil para um novo usuário
-create function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer set search_path = public
-as $$
-begin
-  insert into public.users (id, name, email)
-  values (
-    new.id,
-    new.raw_user_meta_data->>'name',
-    new.email
-  );
-  return new;
-end;
-$$;
-
--- Trigger para executar a função a cada novo usuário
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute procedure public.handle_new_user();
-```
+Com essa configuração, a aplicação está pronta para ser usada.

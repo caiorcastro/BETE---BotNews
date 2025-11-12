@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Feed, Article } from './types';
 import { INITIAL_FEEDS } from './constants';
-import { fetchArticles as fetchLiveArticles } from './services/rssService';
 import Header from './components/Header';
 import FeedManager from './components/FeedManager';
 import ArticleList from './components/ArticleList';
@@ -10,6 +9,7 @@ import ChatBot from './components/ChatBot';
 import ArticleControls from './components/ArticleControls';
 import LandingPage from './components/LandingPage';
 import { supabase } from './services/supabase';
+import { fetchArticles } from './services/rssService';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -18,7 +18,7 @@ export default function App() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
   const [selectedFeed, setSelectedFeed] = useState<string>('all');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isChatBotOpen, setIsChatBotOpen] = useState<boolean>(false);
   const [initialChatPrompt, setInitialChatPrompt] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +28,6 @@ export default function App() {
   const [selectedRelevance, setSelectedRelevance] = useState<string[]>([]);
   const [filterByCompetitors, setFilterByCompetitors] = useState<boolean>(false);
   const [feedCounts, setFeedCounts] = useState<Record<string, number>>({});
-  const [nextRefresh, setNextRefresh] = useState<Date | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -46,7 +45,6 @@ export default function App() {
     try {
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
-        // The onAuthStateChange listener will handle setting isAuthenticated to false
         setArticles([]);
         setFilteredArticles([]);
     } catch (error) {
@@ -54,98 +52,46 @@ export default function App() {
     }
   };
 
-  const fetchArticles = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    setArticles([]);
-    setFeedCounts({});
-    
-    const initialCounts: Record<string, number> = {};
-    feeds.forEach(feed => {
-        initialCounts[feed.name] = 0;
-    });
-    setFeedCounts(initialCounts);
+  const handleRefresh = useCallback(async () => {
+      setIsLoading(true);
+      setError(null);
+      setArticles([]);
+      setFilteredArticles([]);
+      setFeedCounts({});
+      
+      try {
+          const fetchedArticles = await fetchArticles(feeds);
 
-    const handleNewArticles = (newlyClassifiedArticles: Article[]) => {
-        if (newlyClassifiedArticles.length > 0) {
-            setArticles(prevArticles => {
-                const updated = [...prevArticles, ...newlyClassifiedArticles];
-                updated.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                return updated;
-            });
-            setFeedCounts(prevCounts => {
-                const newCounts = { ...prevCounts };
-                newlyClassifiedArticles.forEach(article => {
-                    newCounts[article.source] = (newCounts[article.source] || 0) + 1;
-                });
-                return newCounts;
-            });
-        }
-    };
+          const uniqueArticles = Array.from(new Map(fetchedArticles.map(item => [item.id, item])).values())
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          
+          setArticles(uniqueArticles);
 
-    try {
-        await fetchLiveArticles(feeds, handleNewArticles);
-    } catch (err) {
-        console.error("Error fetching articles:", err);
-        if (err instanceof Error) {
-            setError(err.message);
-        } else {
-            setError("Falha ao buscar artigos. Um erro desconhecido ocorreu.");
-        }
-    } finally {
-        setIsLoading(false);
-    }
+          const counts: Record<string, number> = {};
+          feeds.forEach(feed => { counts[feed.name] = 0; });
+          uniqueArticles.forEach(article => {
+              if (counts[article.source] !== undefined) {
+                  counts[article.source]++;
+              }
+          });
+          setFeedCounts(counts);
+          setError(null);
+
+      } catch (error) {
+          console.error("Error during refresh:", error);
+          setError(error instanceof Error ? error.message : "Ocorreu um erro desconhecido durante a atualização.");
+      } finally {
+          setIsLoading(false);
+      }
   }, [feeds]);
+
 
   useEffect(() => {
     if (isAuthenticated) {
-        fetchArticles();
+        handleRefresh();
     }
-  }, [isAuthenticated, fetchArticles]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-  
-    let timerId: number;
-  
-    const scheduleNextRefresh = () => {
-      const now = new Date();
-      // Horários: 8:30, 12:00, 16:30
-      const schedule = [8.5, 12, 16.5]; 
-  
-      const getNextScheduledTime = () => {
-        for (const hour of schedule) {
-          const targetTime = new Date();
-          targetTime.setHours(Math.floor(hour), (hour % 1) * 60, 0, 0);
-          if (targetTime > now) {
-            return targetTime;
-          }
-        }
-        // Se todos os horários de hoje já passaram, agenda para o primeiro de amanhã
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const firstHour = schedule[0];
-        tomorrow.setHours(Math.floor(firstHour), (firstHour % 1) * 60, 0, 0);
-        return tomorrow;
-      };
-  
-      const nextTime = getNextScheduledTime();
-      setNextRefresh(nextTime);
-  
-      const delay = nextTime.getTime() - now.getTime();
-  
-      timerId = window.setTimeout(() => {
-        console.log(`Automatic refresh triggered at ${new Date().toLocaleTimeString()}`);
-        fetchArticles();
-        scheduleNextRefresh(); // Reagenda para o próximo horário
-      }, delay);
-    };
-  
-    scheduleNextRefresh();
-  
-    return () => clearTimeout(timerId);
-  
-  }, [isAuthenticated, fetchArticles]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   useEffect(() => {
     let currentArticles = articles;
@@ -155,7 +101,7 @@ export default function App() {
     if (searchTerm) {
         currentArticles = currentArticles.filter(article => 
             article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            article.description.toLowerCase().includes(searchTerm.toLowerCase())
+            (article.description && article.description.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }
     if (startDate) {
@@ -192,7 +138,6 @@ export default function App() {
   };
 
   if (isAuthenticated === null) {
-    // Render a loading state while Supabase is checking authentication
     return (
         <div className="min-h-screen flex items-center justify-center bg-background-dark">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -226,13 +171,12 @@ export default function App() {
                 setStartDate={setStartDate}
                 endDate={endDate}
                 setEndDate={setEndDate}
-                onRefresh={fetchArticles}
+                onRefresh={handleRefresh}
                 filteredArticles={filteredArticles}
                 selectedRelevance={selectedRelevance}
                 setSelectedRelevance={setSelectedRelevance}
                 filterByCompetitors={filterByCompetitors}
                 setFilterByCompetitors={setFilterByCompetitors}
-                nextRefresh={nextRefresh}
             />
             <ArticleList
               articles={filteredArticles}
