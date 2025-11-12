@@ -8,8 +8,12 @@ import FeedManager from './components/FeedManager';
 import ArticleList from './components/ArticleList';
 import ChatBot from './components/ChatBot';
 import ArticleControls from './components/ArticleControls';
+import LandingPage from './components/LandingPage';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // State for the main application
   const [feeds, setFeeds] = useState<Feed[]>(INITIAL_FEEDS);
   const [articles, setArticles] = useState<Article[]>([]);
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
@@ -18,8 +22,6 @@ export default function App() {
   const [isChatBotOpen, setIsChatBotOpen] = useState<boolean>(false);
   const [initialChatPrompt, setInitialChatPrompt] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
-
-  // State for controls
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -27,14 +29,23 @@ export default function App() {
   const [filterByCompetitors, setFilterByCompetitors] = useState<boolean>(false);
   const [feedCounts, setFeedCounts] = useState<Record<string, number>>({});
 
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    // Optional: Reset state on logout
+    setArticles([]);
+    setFilteredArticles([]);
+  };
 
   const fetchArticles = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    setArticles([]); // Reset articles for progressive loading
-    setFeedCounts({}); // Reset counts to zero for all feeds
+    setArticles([]);
+    setFeedCounts({});
     
-    // Initialize counts to 0
     const initialCounts: Record<string, number> = {};
     feeds.forEach(feed => {
         initialCounts[feed.name] = 0;
@@ -43,14 +54,11 @@ export default function App() {
 
     const handleNewArticles = (newlyClassifiedArticles: Article[]) => {
         if (newlyClassifiedArticles.length > 0) {
-            // Update articles state
             setArticles(prevArticles => {
                 const updated = [...prevArticles, ...newlyClassifiedArticles];
                 updated.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
                 return updated;
             });
-
-            // Update counts incrementally
             setFeedCounts(prevCounts => {
                 const newCounts = { ...prevCounts };
                 newlyClassifiedArticles.forEach(article => {
@@ -73,55 +81,43 @@ export default function App() {
     } finally {
         setIsLoading(false);
     }
-}, [feeds]);
+  }, [feeds]);
 
   useEffect(() => {
-    fetchArticles();
-  }, [fetchArticles]);
+    if (isAuthenticated) {
+        fetchArticles();
+    }
+  }, [isAuthenticated, fetchArticles]);
 
   useEffect(() => {
     let currentArticles = articles;
-
-    // 1. Filter by selected feed
     if (selectedFeed !== 'all') {
       currentArticles = currentArticles.filter(article => article.source === selectedFeed);
     }
-
-    // 2. Filter by search term (case-insensitive)
     if (searchTerm) {
         currentArticles = currentArticles.filter(article => 
             article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             article.description.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }
-
-    // 3. Filter by date range
     if (startDate) {
-        // Create date in local timezone to avoid UTC interpretation issues
         const [year, month, day] = startDate.split('-').map(Number);
         const start = new Date(year, month - 1, day, 0, 0, 0, 0);
         currentArticles = currentArticles.filter(article => new Date(article.date) >= start);
     }
     if (endDate) {
-        // Create date in local timezone to avoid UTC interpretation issues
         const [year, month, day] = endDate.split('-').map(Number);
         const end = new Date(year, month - 1, day, 23, 59, 59, 999);
         currentArticles = currentArticles.filter(article => new Date(article.date) <= end);
     }
-    
-    // 4. Filter by relevance
     if (selectedRelevance.length > 0) {
-        // Trim relevance from article data to ensure clean matching against the filter
         currentArticles = currentArticles.filter(article => 
             article.relevance && selectedRelevance.includes(article.relevance.trim())
         );
     }
-
-    // 5. Filter by competitors
     if (filterByCompetitors) {
         currentArticles = currentArticles.filter(article => article.competitors && article.competitors.length > 0);
     }
-
     setFilteredArticles(currentArticles);
   }, [selectedFeed, articles, searchTerm, startDate, endDate, selectedRelevance, filterByCompetitors]);
 
@@ -137,9 +133,13 @@ export default function App() {
     setIsChatBotOpen(true);
   };
 
+  if (!isAuthenticated) {
+    return <LandingPage onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="min-h-screen">
-      <Header />
+      <Header onLogout={handleLogout} />
       <main className="container mx-auto p-4 sm:p-6 lg:p-8">
         <div className="flex flex-col lg:flex-row gap-8">
           <aside className="lg:w-1/4 xl:w-1/5">
