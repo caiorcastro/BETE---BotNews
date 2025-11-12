@@ -9,14 +9,12 @@ import ArticleList from './components/ArticleList';
 import ChatBot from './components/ChatBot';
 import ArticleControls from './components/ArticleControls';
 import LandingPage from './components/LandingPage';
+import { auth } from './services/firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 export default function App() {
-  // Check localStorage for an existing session on initial load
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('isAuthenticated') === 'true';
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
-  // State for the main application
   const [feeds, setFeeds] = useState<Feed[]>(INITIAL_FEEDS);
   const [articles, setArticles] = useState<Article[]>([]);
   const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
@@ -33,17 +31,22 @@ export default function App() {
   const [feedCounts, setFeedCounts] = useState<Record<string, number>>({});
   const [nextRefresh, setNextRefresh] = useState<Date | null>(null);
 
-  const handleLoginSuccess = () => {
-    localStorage.setItem('isAuthenticated', 'true');
-    setIsAuthenticated(true);
-  };
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setIsAuthenticated(!!user);
+    });
+    return () => unsubscribe(); // Cleanup subscription on unmount
+  }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    setIsAuthenticated(false);
-    // Optional: Reset state on logout
-    setArticles([]);
-    setFilteredArticles([]);
+  const handleLogout = async () => {
+    try {
+        await signOut(auth);
+        // The onAuthStateChanged listener will handle setting isAuthenticated to false
+        setArticles([]);
+        setFilteredArticles([]);
+    } catch (error) {
+        console.error("Error signing out: ", error);
+    }
   };
 
   const fetchArticles = useCallback(async () => {
@@ -183,8 +186,17 @@ export default function App() {
     setIsChatBotOpen(true);
   };
 
+  if (isAuthenticated === null) {
+    // Render a loading state while Firebase is checking authentication
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-background-dark">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+    );
+  }
+
   if (!isAuthenticated) {
-    return <LandingPage onLoginSuccess={handleLoginSuccess} />;
+    return <LandingPage />;
   }
 
   return (

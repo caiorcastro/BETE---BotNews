@@ -1,37 +1,24 @@
 
 import React, { useState } from 'react';
-
-interface AuthProps {
-  onLoginSuccess: () => void;
-}
+import { auth, db } from '../services/firebase';
+import { 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword,
+    sendPasswordResetEmail,
+    AuthError
+} from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 type AuthMode = 'LOGIN' | 'REGISTER' | 'RESET';
 
-// Helper to get users from localStorage
-const getUsers = () => {
-    try {
-        const users = localStorage.getItem('bete_users');
-        return users ? JSON.parse(users) : {};
-    } catch (e) {
-        return {};
-    }
-};
-
-// Helper to save users to localStorage
-const saveUsers = (users: object) => {
-    localStorage.setItem('bete_users', JSON.stringify(users));
-};
-
-const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
+const Auth: React.FC = () => {
   const [mode, setMode] = useState<AuthMode>('LOGIN');
   
-  // Form states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
 
-  // UI states
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -51,18 +38,30 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
     setName('');
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const mapFirebaseError = (authError: AuthError): string => {
+    switch (authError.code) {
+        case 'auth/email-already-in-use':
+            return 'Este e-mail já está registrado.';
+        case 'auth/invalid-email':
+            return 'O formato do e-mail é inválido.';
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+            return 'E-mail ou senha inválidos.';
+        case 'auth/weak-password':
+            return 'A senha deve ter pelo menos 6 caracteres.';
+        default:
+            return 'Ocorreu um erro. Por favor, tente novamente.';
+    }
+  }
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     clearFormState();
     setIsLoading(true);
 
     if (password !== confirmPassword) {
         setError("As senhas não coincidem.");
-        setIsLoading(false);
-        return;
-    }
-    if (password.length < 6) {
-        setError("A senha deve ter pelo menos 6 caracteres.");
         setIsLoading(false);
         return;
     }
@@ -78,52 +77,53 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
         return;
     }
 
-    setTimeout(() => {
-        const users = getUsers();
-        if (users[lowerCaseEmail]) {
-            setError("Este e-mail já está registrado.");
-            setIsLoading(false);
-            return;
-        }
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, lowerCaseEmail, password);
+        const user = userCredential.user;
 
-        // Simple "hashing" for simulation - DO NOT USE IN PRODUCTION
-        const hashedPassword = btoa(password); 
-        users[lowerCaseEmail] = { name, password: hashedPassword };
-        saveUsers(users);
-
+        // Store additional user data in Firestore
+        await setDoc(doc(db, "users", user.uid), {
+            name: name,
+            email: lowerCaseEmail,
+            createdAt: new Date().toISOString()
+        });
+        
         setSuccess("Conta criada com sucesso! Por favor, faça o login.");
         switchMode('LOGIN');
-    }, 1000);
+    } catch (err) {
+        setError(mapFirebaseError(err as AuthError));
+    } finally {
+        setIsLoading(false);
+    }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     clearFormState();
     setIsLoading(true);
     
-    setTimeout(() => {
-        const users = getUsers();
-        const lowerCaseEmail = email.toLowerCase();
-        const user = users[lowerCaseEmail];
-
-        if (user && atob(user.password) === password) {
-            onLoginSuccess();
-        } else {
-            setError("E-mail ou senha inválidos.");
-            setIsLoading(false);
-        }
-    }, 1000);
+    try {
+        await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
+        // onAuthStateChanged in App.tsx will handle the navigation
+    } catch (err) {
+        setError(mapFirebaseError(err as AuthError));
+    } finally {
+        setIsLoading(false);
+    }
   };
   
-  const handleReset = (e: React.FormEvent) => {
+  const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     clearFormState();
     setIsLoading(true);
-    // This remains a simulation as we can't send emails from the frontend.
-    setTimeout(() => {
-        setSuccess("Se uma conta existir para este e-mail, um link de redefinição foi enviado (simulação).");
+    try {
+        await sendPasswordResetEmail(auth, email);
+        setSuccess("Se uma conta existir para este e-mail, um link de redefinição foi enviado.");
+    } catch (err) {
+        setError(mapFirebaseError(err as AuthError));
+    } finally {
         setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const renderForm = () => {
@@ -139,7 +139,7 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
               <input type="email" placeholder="E-mail Corporativo" required value={email} onChange={e => setEmail(e.target.value)} className="input-field" />
             </div>
             <div>
-              <input type="password" placeholder="Senha" required value={password} onChange={e => setPassword(e.target.value)} className="input-field" />
+              <input type="password" placeholder="Senha (mínimo 6 caracteres)" required value={password} onChange={e => setPassword(e.target.value)} className="input-field" />
             </div>
             <div>
               <input type="password" placeholder="Confirmar Senha" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="input-field" />

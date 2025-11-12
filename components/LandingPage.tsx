@@ -2,10 +2,6 @@
 import React from 'react';
 import Auth from './Auth';
 
-interface LandingPageProps {
-  onLoginSuccess: () => void;
-}
-
 const FeatureCard: React.FC<{ icon: string; title: string; children: React.ReactNode }> = ({ icon, title, children }) => (
     <div className="bg-card-dark p-6 rounded-lg border border-gray-800">
         <div className="flex items-center gap-4 mb-3">
@@ -17,7 +13,7 @@ const FeatureCard: React.FC<{ icon: string; title: string; children: React.React
 );
 
 
-const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
+const LandingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background-dark">
       <header className="bg-[#1a1a1a]/80 backdrop-blur-sm sticky top-0 z-50">
@@ -52,7 +48,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
                         </p>
                     </div>
                     <div className="max-w-md mx-auto lg:mx-0 lg:justify-self-end">
-                        <Auth onLoginSuccess={onLoginSuccess} />
+                        <Auth />
                     </div>
                 </div>
             </div>
